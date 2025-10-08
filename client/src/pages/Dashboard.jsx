@@ -39,10 +39,10 @@ function Dashboard() {
     return <Spinner />;
   }
 
-  const totalClaims = claims.length;
-  const pendingClaims = claims.filter((claim) => claim.approvalHistory[claim.approvalHistory.length - 1].status === 'Pending').length;
-  const approvedClaims = claims.filter((claim) => claim.approvalHistory[claim.approvalHistory.length - 1].status === 'Approved').length;
-  const rejectedClaims = claims.filter((claim) => claim.approvalHistory[claim.approvalHistory.length - 1].status === 'Rejected').length;
+  const totalClaims = claims ? claims.length : 0;
+  const pendingClaims = claims ? claims.filter((claim) => claim.status && claim.status.statusName === 'Pending').length : 0;
+  const approvedClaims = claims ? claims.filter((claim) => claim.status && claim.status.statusName === 'Approved').length : 0;
+  const rejectedClaims = claims ? claims.filter((claim) => claim.status && claim.status.statusName === 'Rejected').length : 0;
 
   return (
     <div className="flex bg-gray-100 min-h-screen">
@@ -101,31 +101,37 @@ function Dashboard() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Claim Type</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Approver</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {claims.map((claim) => (
-                <tr key={claim._id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{claim.claimId}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{claim.claimType}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${claim.amount}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ 
-                        claim.approvalHistory[claim.approvalHistory.length - 1].status === 'Approved' ? 'bg-green-100 text-green-800' : 
-                        claim.approvalHistory[claim.approvalHistory.length - 1].status === 'Rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800' 
-                      }`}>
-                      {claim.approvalHistory[claim.approvalHistory.length - 1].status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{claim.currentApprover ? claim.currentApprover.name : 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button className="text-indigo-600 hover:text-indigo-900">View</button>
-                  </td>
+              {claims && claims.length > 0 ? (
+                claims.map((claim) => (
+                  <tr key={claim._id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{claim.claimId}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{claim.claimType && claim.claimType.typeName}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${claim.amount}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {claim.status && (
+                        <span
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ 
+                            claim.status.statusName === 'Approved' ? 'bg-green-100 text-green-800' : 
+                            claim.status.statusName === 'Rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800' 
+                          }`}>
+                          {claim.status.statusName}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button className="text-indigo-600 hover:text-indigo-900">View</button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="5" className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">No claims found.</td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

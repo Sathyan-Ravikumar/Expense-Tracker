@@ -1,12 +1,13 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FaTachometerAlt, FaPlus, FaSignOutAlt } from 'react-icons/fa';
-import { useDispatch } from 'react-redux';
+import { FaTachometerAlt, FaPlus, FaSignOutAlt, FaMoneyBillWave } from 'react-icons/fa';
+import { useDispatch, useSelector } from 'react-redux';
 import { logout, reset } from '../features/auth/authSlice';
 
 const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.auth);
 
   const onLogout = () => {
     dispatch(logout());
@@ -41,6 +42,17 @@ const Sidebar = () => {
           <FaPlus className="mr-3" />
           Apply Claim
         </Link>
+        {user && user.role === 'Finance Officer' && (
+          <Link
+            to="/finance/dashboard"
+            className={`flex items-center py-3 px-4 mt-2 rounded-lg transition-colors duration-200 ${ 
+              location.pathname === '/finance/dashboard' ? 'bg-gray-700' : 'hover:bg-gray-800'
+            }`}
+          >
+            <FaMoneyBillWave className="mr-3" />
+            Finance Dashboard
+          </Link>
+        )}
       </nav>
     </div>
   );

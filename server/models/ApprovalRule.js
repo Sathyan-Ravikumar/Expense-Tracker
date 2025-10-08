@@ -1,20 +1,31 @@
 const mongoose = require('mongoose');
 
-const ApprovalRuleSchema = new mongoose.Schema({
-  claimType: {
-    type: String,
-    required: true,
+const ApproverSchema = new mongoose.Schema({
+  approverId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
   },
-  amountThreshold: {
+  level: {
     type: Number,
     required: true,
   },
-  approvers: [
-    {
-      type: String,
-      enum: ['Manager', 'Finance Officer', 'Admin/Finance Head', 'System Admin'],
-    },
-  ],
+});
+
+const ApprovalRuleSchema = new mongoose.Schema({
+  claimType: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ClaimTypeMaster',
+    required: true,
+  },
+  amountMin: {
+    type: Number,
+    default: 0,
+  },
+  amountMax: {
+    type: Number,
+    default: Infinity,
+  },
+  approvers: [ApproverSchema],
 });
 
 module.exports = mongoose.model('ApprovalRule', ApprovalRuleSchema);

@@ -11,7 +11,8 @@ const ClaimSchema = new mongoose.Schema({
     unique: true,
   },
   claimType: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ClaimTypeMaster',
     required: true,
   },
   date: {
@@ -26,13 +27,10 @@ const ClaimSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  currentApprover: {
+  status: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-  },
-  nextApprover: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'StatusMaster',
+    required: true,
   },
   approvalHistory: [
     {
@@ -41,8 +39,8 @@ const ClaimSchema = new mongoose.Schema({
         ref: 'User',
       },
       status: {
-        type: String,
-        enum: ['Pending', 'Approved', 'Rejected', 'Returned'],
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'StatusMaster',
       },
       remarks: {
         type: String,
@@ -58,6 +56,13 @@ const ClaimSchema = new mongoose.Schema({
       type: String,
     },
   ],
+  reimbursed: {
+    type: Boolean,
+    default: false,
+  },
+  reimbursedDate: {
+    type: Date,
+  },
 });
 
 module.exports = mongoose.model('Claim', ClaimSchema);

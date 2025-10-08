@@ -16,13 +16,12 @@ const UserSchema = new mongoose.Schema({
     required: true,
   },
   role: {
-    type: String,
-    enum: ['Employee', 'Manager', 'Finance Officer', 'Admin/Finance Head', 'System Admin'],
-    default: 'Employee',
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'RoleMaster',
+    required: true,
   },
   employeeId: {
     type: String,
-    unique: true,
   },
   department: {
     type: String,

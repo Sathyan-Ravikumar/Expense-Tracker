@@ -3,7 +3,6 @@ const router = express.Router();
 const {
   getClaims,
   getMyClaims,
-  getManagerClaims,
   getClaim,
   createClaim,
   updateClaim,
@@ -11,6 +10,7 @@ const {
   approveClaim,
   rejectClaim,
   returnClaim,
+  reimburseClaim,
 } = require('../controllers/claimController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 const upload = require('../middleware/upload');
@@ -19,8 +19,6 @@ router
   .route('/')
   .get(protect, authorize('Manager', 'Finance Officer', 'Admin/Finance Head', 'System Admin'), getClaims)
   .post(protect, upload, createClaim);
-
-router.route('/manager').get(protect, authorize('Manager'), getManagerClaims);
 
 router.route('/my').get(protect, getMyClaims);
 
@@ -33,5 +31,6 @@ router
 router.route('/:id/approve').put(protect, authorize('Manager', 'Finance Officer', 'Admin/Finance Head'), approveClaim);
 router.route('/:id/reject').put(protect, authorize('Manager', 'Finance Officer', 'Admin/Finance Head'), rejectClaim);
 router.route('/:id/return').put(protect, authorize('Manager', 'Finance Officer', 'Admin/Finance Head'), returnClaim);
+router.route('/:id/reimburse').put(protect, authorize('Finance Officer'), reimburseClaim);
 
 module.exports = router;
