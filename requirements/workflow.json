@@ -1,0 +1,113 @@
+{
+  "workflow_version": "1.0",
+  "claimTypes": {
+    "travel": {
+      "approvalSequence": ["Manager", "Finance Officer"],
+      "threshold": 0,
+      "description": "Claims related to official travel expenses such as taxi, flight, or hotel",
+      "statusTransitions": ["Pending", "Approved", "Rejected", "Returned"]
+    },
+    "medical": {
+      "approvalSequence": ["Manager", "Finance Officer", "Admin"],
+      "threshold": 0,
+      "description": "Medical reimbursement claims for employee health-related expenses",
+      "statusTransitions": ["Pending", "Approved", "Rejected", "Returned"]
+    },
+    "food": {
+      "approvalSequence": [
+        {"amount": 1000, "sequence": ["Manager"]},
+        {"amount": 1001, "sequence": ["Manager", "Finance Officer"]}
+      ],
+      "description": "Claims for meals or food allowance",
+      "statusTransitions": ["Pending", "Approved", "Rejected", "Returned"]
+    },
+    "officeEquipment": {
+      "approvalSequence": [
+        {"amount": 10000, "sequence": ["Manager", "Finance Officer", "Admin"]},
+        {"amount": 0, "sequence": ["Manager", "Finance Officer"]}
+      ],
+      "description": "Purchases for office equipment such as laptops, desks, printers",
+      "statusTransitions": ["Pending", "Approved", "Rejected", "Returned"]
+    },
+    "miscellaneous": {
+      "approvalSequence": ["Manager"],
+      "threshold": 0,
+      "description": "Any other claim types not defined above",
+      "statusTransitions": ["Pending", "Approved", "Rejected", "Returned"]
+    }
+  },
+  "roles": {
+    "Employee": {
+      "canSubmit": true,
+      "canEditBeforeApproval": true,
+      "canView": true,
+      "canDeleteBeforeApproval": true
+    },
+    "Manager": {
+      "canApprove": true,
+      "canReject": true,
+      "canReturn": true,
+      "canViewAllTeamClaims": true
+    },
+    "Finance Officer": {
+      "canApprove": true,
+      "canReject": true,
+      "canReturn": true,
+      "canViewAllClaims": true
+    },
+    "Admin/Finance Head": {
+      "canApprove": true,
+      "canReject": true,
+      "canReturn": true,
+      "canViewAllClaims": true,
+      "canConfigureApprovalRules": true,
+      "canGenerateReports": true
+    },
+    "System Admin": {
+      "canManageUsers": true,
+      "canConfigureApprovalRules": true,
+      "canViewAuditLogs": true
+    }
+  },
+  "status": [
+    {
+      "name": "Pending",
+      "description": "Claim submitted, waiting for first-level approval"
+    },
+    {
+      "name": "Approved",
+      "description": "Claim has been approved at all required levels"
+    },
+    {
+      "name": "Rejected",
+      "description": "Claim has been rejected by any approver, closed"
+    },
+    {
+      "name": "Returned",
+      "description": "Claim returned to employee for correction or additional info"
+    }
+  ],
+  "actions": {
+    "Employee": ["Submit", "Edit", "Delete"],
+    "Approvers": ["Approve", "Reject", "Return"]
+  },
+  "approvalRules": {
+    "configurable": true,
+    "description": "Admin can configure approval sequences per claim type and amount thresholds",
+    "examples": [
+      "Travel claims → Manager → Finance Officer",
+      "Medical claims above 10,000 → Manager → Finance Officer → Admin",
+      "Food claims ≤ 1,000 → Manager only",
+      "Office Equipment claims > 10,000 → Manager → Finance Officer → Admin"
+    ]
+  },
+  "notifications": {
+    "enabled": true,
+    "triggeredOn": ["Claim submitted", "Claim approved", "Claim rejected", "Claim returned", "Claim escalated"],
+    "channels": ["Email", "In-App"]
+  },
+  "auditLogs": {
+    "enabled": true,
+    "logActions": ["Submit", "Edit", "Delete", "Approve", "Reject", "Return", "Escalation"]
+  }
+}

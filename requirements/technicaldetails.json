@@ -1,0 +1,33 @@
+{
+  "project_name": "Expense Tracker / Reimbursement Portal",
+  "tech_stack": {
+    "frontend": [
+      "React.js with functional components (.jsx)",
+      "React Router",
+      "Redux Toolkit for state management",
+      "Axios for API calls",
+      "Tailwind CSS for styling",
+      "Session storage for token persistence"
+    ],
+    "backend": [
+      "Node.js",
+      "Express.js",
+      "MongoDB with Mongoose ODM",
+      "JWT Authentication",
+      "Role-based Access Control"
+    ],
+    "notifications": ["Nodemailer (Email)", "Twilio / Free SMS service"],
+    "deployment": ["Vercel for frontend", "Render/Railway for backend"]
+  },
+  "endpoints_ports": {
+    "frontend": 3000,
+    "backend": 5000
+  },
+  "folder_structure": {
+    "frontend": "client/",
+    "backend": "server/"
+  },
+
+  "responsive": true,
+  "tailwind_customization": true
+}
