@@ -1,19 +1,24 @@
 {
-  "workflow_version": "1.0",
+  "workflow_version": "1.1",
   "claimTypes": {
     "travel": {
+      "fields": ["Claim Type", "Date", "Amount", "Description", "Upload Bill/Receipt"],
       "approvalSequence": ["Manager", "Finance Officer"],
       "threshold": 0,
       "description": "Claims related to official travel expenses such as taxi, flight, or hotel",
       "statusTransitions": ["Pending", "Approved", "Rejected", "Returned"]
     },
     "medical": {
-      "approvalSequence": ["Manager", "Finance Officer", "Admin"],
-      "threshold": 0,
+      "fields": ["Claim Type", "Date", "Amount", "Description", "Upload Bill/Receipt"],
+      "approvalSequence": [
+        {"amount": 0, "sequence": ["Manager", "Finance Officer"]},
+        {"amount": 10000, "sequence": ["Manager", "Finance Officer", "Admin/Finance Head"]}
+      ],
       "description": "Medical reimbursement claims for employee health-related expenses",
       "statusTransitions": ["Pending", "Approved", "Rejected", "Returned"]
     },
     "food": {
+      "fields": ["Claim Type", "Date", "Amount", "Description", "Upload Bill/Receipt"],
       "approvalSequence": [
         {"amount": 1000, "sequence": ["Manager"]},
         {"amount": 1001, "sequence": ["Manager", "Finance Officer"]}
@@ -22,14 +27,16 @@
       "statusTransitions": ["Pending", "Approved", "Rejected", "Returned"]
     },
     "officeEquipment": {
+      "fields": ["Claim Type", "Date", "Amount", "Description", "Upload Bill/Receipt"],
       "approvalSequence": [
-        {"amount": 10000, "sequence": ["Manager", "Finance Officer", "Admin"]},
+        {"amount": 10000, "sequence": ["Manager", "Finance Officer", "Admin/Finance Head"]},
         {"amount": 0, "sequence": ["Manager", "Finance Officer"]}
       ],
       "description": "Purchases for office equipment such as laptops, desks, printers",
       "statusTransitions": ["Pending", "Approved", "Rejected", "Returned"]
     },
     "miscellaneous": {
+      "fields": ["Claim Type", "Date", "Amount", "Description", "Upload Bill/Receipt"],
       "approvalSequence": ["Manager"],
       "threshold": 0,
       "description": "Any other claim types not defined above",
@@ -41,19 +48,22 @@
       "canSubmit": true,
       "canEditBeforeApproval": true,
       "canView": true,
-      "canDeleteBeforeApproval": true
+      "canDeleteBeforeApproval": true,
+      "canViewOwnClaims": true
     },
     "Manager": {
       "canApprove": true,
       "canReject": true,
       "canReturn": true,
-      "canViewAllTeamClaims": true
+      "canViewAllTeamClaims": true,
+      "canFilterClaims": true
     },
     "Finance Officer": {
       "canApprove": true,
       "canReject": true,
       "canReturn": true,
-      "canViewAllClaims": true
+      "canViewAllClaims": true,
+      "canFilterClaims": true
     },
     "Admin/Finance Head": {
       "canApprove": true,
@@ -61,12 +71,14 @@
       "canReturn": true,
       "canViewAllClaims": true,
       "canConfigureApprovalRules": true,
-      "canGenerateReports": true
+      "canGenerateReports": true,
+      "canFilterReports": true
     },
     "System Admin": {
       "canManageUsers": true,
       "canConfigureApprovalRules": true,
-      "canViewAuditLogs": true
+      "canViewAuditLogs": true,
+      "canManageRoles": true
     }
   },
   "status": [
@@ -96,9 +108,9 @@
     "description": "Admin can configure approval sequences per claim type and amount thresholds",
     "examples": [
       "Travel claims → Manager → Finance Officer",
-      "Medical claims above 10,000 → Manager → Finance Officer → Admin",
-      "Food claims ≤ 1,000 → Manager only",
-      "Office Equipment claims > 10,000 → Manager → Finance Officer → Admin"
+      "Medical claims above ₹10,000 → Manager → Finance Officer → Admin/Finance Head",
+      "Food claims ≤ ₹1,000 → Manager only",
+      "Office Equipment claims > ₹10,000 → Manager → Finance Officer → Admin/Finance Head"
     ]
   },
   "notifications": {
@@ -109,5 +121,14 @@
   "auditLogs": {
     "enabled": true,
     "logActions": ["Submit", "Edit", "Delete", "Approve", "Reject", "Return", "Escalation"]
+  },
+  "dashboard": {
+    "enabled": true,
+    "features": [
+      "View pending approvals (filtered by claim type, role, employee)",
+      "Search/filter claims by employee, type, amount, date",
+      "Generate department-wise and category-wise reports",
+      "Track approval timelines and escalation history"
+    ]
   }
 }

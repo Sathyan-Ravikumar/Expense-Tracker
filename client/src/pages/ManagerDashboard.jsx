@@ -3,12 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import Spinner from '../components/Spinner';
 import Sidebar from '../components/Sidebar';
-import { getClaims, reset } from '../features/claims/claimSlice';
+import { getClaims, reset, approveClaim, rejectClaim, returnClaim } from '../features/claims/claimSlice';
 import { toast } from 'react-hot-toast';
 import { FaFileInvoiceDollar, FaClock,  FaBars } from 'react-icons/fa';
+import ReturnClaimModal from '../components/ReturnClaimModal';
+import RejectClaimModal from '../components/RejectClaimModal';
 
 function ManagerDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [selectedClaimId, setSelectedClaimId] = useState(null);
+
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
@@ -33,15 +39,41 @@ function ManagerDashboard() {
     };
   }, [user, navigate, dispatch, isError, message]);
 
+  const handleApprove = (claimId) => {
+    dispatch(approveClaim(claimId));
+  };
+
+  const handleReject = (claimId) => {
+    setSelectedClaimId(claimId);
+    setShowRejectModal(true);
+  };
+
+  const handleReturn = (claimId) => {
+    setSelectedClaimId(claimId);
+    setShowReturnModal(true);
+  };
+
+  const closeReturnModal = () => {
+    setShowReturnModal(false);
+    setSelectedClaimId(null);
+  };
+
+  const closeRejectModal = () => {
+    setShowRejectModal(false);
+    setSelectedClaimId(null);
+  };
+
   if (isLoading) {
     return <Spinner />;
   }
 
   const totalClaims = claims.length;
-  const pendingClaims = claims.filter((claim) => claim.approvalHistory[claim.approvalHistory.length - 1].status === 'Pending').length;
+  const pendingClaims = claims.filter((claim) => claim.status && claim.status.statusName === 'Pending').length;
 
   return (
     <div className="flex bg-gray-100 min-h-screen">
+      {showReturnModal && <ReturnClaimModal claimId={selectedClaimId} closeModal={closeReturnModal} />}
+      {showRejectModal && <RejectClaimModal claimId={selectedClaimId} closeModal={closeRejectModal} />}
       <div className={`fixed inset-0 z-20 transition-opacity bg-black opacity-50 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`} onClick={() => setSidebarOpen(false)}></div>
       <div className={`fixed inset-y-0 left-0 z-30 w-64 transition duration-300 transform bg-gray-900 lg:translate-x-0 lg:static lg:inset-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <Sidebar />
@@ -80,6 +112,7 @@ function ManagerDashboard() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Claim ID</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Claim Type</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
@@ -89,22 +122,28 @@ function ManagerDashboard() {
                 <tr key={claim._id}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{claim.user.name}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{claim.claimId}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{claim.claimType}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{claim.claimType.typeName}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${claim.amount}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{claim.description}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ 
-                        claim.approvalHistory[claim.approvalHistory.length - 1].status === 'Approved' ? 'bg-green-100 text-green-800' : 
-                        claim.approvalHistory[claim.approvalHistory.length - 1].status === 'Rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800' 
-                      }`}>
-                      {claim.approvalHistory[claim.approvalHistory.length - 1].status}
-                    </span>
+                    {claim.status && (
+                      <span
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ 
+                          claim.status.statusName === 'Approved' ? 'bg-green-100 text-green-800' : 
+                          claim.status.statusName === 'Rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800' 
+                        }`}>
+                        {claim.status.statusName}
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button className="text-indigo-600 hover:text-indigo-900">View</button>
-                    <button className="text-green-600 hover:text-green-900 ml-4">Approve</button>
-                    <button className="text-red-600 hover:text-red-900 ml-4">Reject</button>
-                    <button className="text-yellow-600 hover:text-yellow-900 ml-4">Return</button>
+                    {user && user.role === 'Manager' && (
+                      <>
+                        <button onClick={() => handleApprove(claim._id)} className="text-green-600 hover:text-green-900 ml-4">Approve</button>
+                        <button onClick={() => handleReject(claim._id)} className="text-red-600 hover:text-red-900 ml-4">Reject</button>
+                        <button onClick={() => handleReturn(claim._id)} className="text-yellow-600 hover:text-yellow-900 ml-4">Return</button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}

@@ -15,17 +15,20 @@ const generateClaimId = () => {
 exports.getClaims = async (req, res, next) => {
   try {
     let claims;
-    if (req.user.role === 'Manager') {
-      // Get claims for users in the same team (not implemented, gets all for now)
-      claims = await Claim.find()
+    if (req.user.role.roleName === 'Manager') {
+      const teamUsers = await User.find({ team: req.user.team });
+      const userIds = teamUsers.map((user) => user._id);
+      claims = await Claim.find({ user: { $in: userIds } })
         .populate('user', 'name email')
         .populate('claimType', 'typeName')
-        .populate('status', 'statusName');
+        .populate('status', 'statusName')
+        .populate({ path: 'approvalHistory.approver', model: 'RoleMaster' });
     } else {
       claims = await Claim.find()
         .populate('user', 'name email')
         .populate('claimType', 'typeName')
-        .populate('status', 'statusName');
+        .populate('status', 'statusName')
+        .populate({ path: 'approvalHistory.approver', model: 'RoleMaster' });
     }
     res.status(200).json({ success: true, data: claims });
   } catch (err) {
@@ -42,7 +45,7 @@ exports.getMyClaims = async (req, res, next) => {
       .populate('user', 'name email')
       .populate('claimType', 'typeName')
       .populate('status', 'statusName')
-      .populate('approvalHistory.approver', 'name email')
+      .populate({ path: 'approvalHistory.approver', model: 'RoleMaster' })
       .populate('approvalHistory.status', 'statusName');
     res.status(200).json({ success: true, data: claims });
   } catch (err) {
@@ -228,7 +231,7 @@ exports.approveClaim = async (req, res, next) => {
     }
 
     const currentApproverIndex = approvalRule.approvers.findIndex(
-      (approver) => approver.approverId.toString() === req.user.id
+      (approver) => approver.approverId.toString() === req.user.role._id.toString()
     );
 
     if (currentApproverIndex === -1) {
@@ -274,16 +277,33 @@ exports.rejectClaim = async (req, res, next) => {
       return res.status(404).json({ success: false });
     }
 
+    const approvalRule = await ApprovalRule.findOne({
+      claimType: claim.claimType,
+      amountMin: { $lte: claim.amount },
+      amountMax: { $gte: claim.amount },
+    });
+
+    if (!approvalRule) {
+      return res.status(400).json({ success: false, message: 'No approval rule found for this claim type and amount.' });
+    }
+
+    const currentApproverIndex = approvalRule.approvers.findIndex(
+      (approver) => approver.approverId.toString() === req.user.role._id.toString()
+    );
+
+    if (currentApproverIndex === -1) {
+      return res.status(401).json({ success: false, message: 'Not authorized to reject this claim' });
+    }
+
     const rejectedStatus = await StatusMaster.findOne({ statusName: 'Rejected' });
     if (!rejectedStatus) {
       return res.status(500).json({ success: false, message: 'Rejected status not found.' });
     }
 
     claim.status = rejectedStatus._id;
-    const currentApproverIndex = claim.approvalHistory.length - 1;
-    claim.approvalHistory[currentApproverIndex].status = rejectedStatus._id;
-    claim.approvalHistory[currentApproverIndex].remarks = req.body.remarks;
-
+    const currentHistoryIndex = claim.approvalHistory.length - 1;
+    claim.approvalHistory[currentHistoryIndex].status = rejectedStatus._id;
+    claim.approvalHistory[currentHistoryIndex].remarks = req.body.remarks;
 
     await claim.save();
 
@@ -304,14 +324,36 @@ exports.returnClaim = async (req, res, next) => {
       return res.status(404).json({ success: false });
     }
 
+    const approvalRule = await ApprovalRule.findOne({
+      claimType: claim.claimType,
+      amountMin: { $lte: claim.amount },
+      amountMax: { $gte: claim.amount },
+    });
+
+    if (!approvalRule) {
+      return res.status(400).json({ success: false, message: 'No approval rule found for this claim type and amount.' });
+    }
+
+    const currentApproverIndex = approvalRule.approvers.findIndex(
+      (approver) => approver.approverId.toString() === req.user.role._id.toString()
+    );
+
+    if (currentApproverIndex === -1) {
+      return res.status(401).json({ success: false, message: 'Not authorized to return this claim' });
+    }
+
     const returnedStatus = await StatusMaster.findOne({ statusName: 'Returned' });
     if (!returnedStatus) {
       return res.status(500).json({ success: false, message: 'Returned status not found.' });
     }
 
     claim.status = returnedStatus._id;
-    const currentApproverIndex = claim.approvalHistory.length - 1;
-    claim.approvalHistory[currentApproverIndex].status = returnedStatus._id;
+    const currentHistoryIndex = claim.approvalHistory.length - 1;
+    claim.approvalHistory[currentHistoryIndex].status = returnedStatus._id;
+    claim.approvalHistory[currentHistoryIndex].remarks = req.body.remarks;
+
+    await claim.save();
+
     res.status(200).json({ success: true, data: claim });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });

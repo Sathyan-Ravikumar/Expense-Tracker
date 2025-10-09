@@ -26,6 +26,9 @@ const UserSchema = new mongoose.Schema({
   department: {
     type: String,
   },
+  team: {
+    type: String,
+  },
   manager: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

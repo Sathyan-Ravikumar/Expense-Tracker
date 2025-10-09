@@ -100,6 +100,7 @@ function Dashboard() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Claim ID</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Claim Type</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
@@ -111,6 +112,7 @@ function Dashboard() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{claim.claimId}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{claim.claimType && claim.claimType.typeName}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${claim.amount}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{claim.description}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {claim.status && (
                         <span

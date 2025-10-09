@@ -10,6 +10,7 @@ const RoleMaster = require('./models/RoleMaster');
 const StatusMaster = require('./models/StatusMaster');
 const ClaimTypeMaster = require('./models/ClaimTypeMaster');
 const ApprovalRule = require('./models/ApprovalRule');
+const User = require('./models/User');
 
 // Connect to DB
 connectDB();
@@ -45,12 +46,30 @@ const importData = async () => {
     await StatusMaster.deleteMany();
     await ClaimTypeMaster.deleteMany();
     await ApprovalRule.deleteMany();
+    await User.deleteMany();
 
     const createdRoles = await RoleMaster.insertMany(roles);
     const createdStatuses = await StatusMaster.insertMany(statuses);
     const createdClaimTypes = await ClaimTypeMaster.insertMany(claimTypes);
 
+    const employeeRole = createdRoles.find((role) => role.roleName === 'Employee');
     const managerRole = createdRoles.find((role) => role.roleName === 'Manager');
+
+    const employee = await User.create({
+      name: 'Employee User',
+      email: 'employee@example.com',
+      password: '123456',
+      role: employeeRole._id,
+      team: 'Team A',
+    });
+
+    const manager = await User.create({
+      name: 'Manager User',
+      email: 'manager@example.com',
+      password: '123456',
+      role: managerRole._id,
+      team: 'Team A',
+    });
 
     const approvalRules = [
       {
@@ -84,6 +103,7 @@ const deleteData = async () => {
     await StatusMaster.deleteMany();
     await ClaimTypeMaster.deleteMany();
     await ApprovalRule.deleteMany();
+    await User.deleteMany();
 
     console.log('Data Destroyed!');
     process.exit();

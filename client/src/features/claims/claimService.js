@@ -64,26 +64,26 @@ const approveClaim = async (claimId, token) => {
 };
 
 // Reject user claim
-const rejectClaim = async (claimId, token) => {
+const rejectClaim = async (claimId, remarks, token) => {
   const config = {
     headers: {
       'x-auth-token': token,
     },
   };
 
-  const response = await axios.put(API_URL + claimId + '/reject', {}, config);
+  const response = await axios.put(API_URL + claimId + '/reject', { remarks }, config);
   return response.data;
 };
 
 // Return user claim
-const returnClaim = async (claimId, token) => {
+const returnClaim = async (claimId, remarks, token) => {
   const config = {
     headers: {
       'x-auth-token': token,
     },
   };
 
-  const response = await axios.put(API_URL + claimId + '/return', {}, config);
+  const response = await axios.put(API_URL + claimId + '/return', { remarks }, config);
   return response.data;
 };
 

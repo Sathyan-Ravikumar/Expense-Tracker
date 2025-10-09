@@ -107,10 +107,10 @@ export const approveClaim = createAsyncThunk(
 // Reject user claim
 export const rejectClaim = createAsyncThunk(
   'claims/reject',
-  async (id, thunkAPI) => {
+  async ({ id, remarks }, thunkAPI) => {
     try {
       const token = thunkAPI.getState().auth.accessToken;
-      return await claimService.rejectClaim(id, token);
+      return await claimService.rejectClaim(id, remarks, token);
     } catch (error) {
       const message =
         (error.response &&
@@ -126,10 +126,10 @@ export const rejectClaim = createAsyncThunk(
 // Return user claim
 export const returnClaim = createAsyncThunk(
   'claims/return',
-  async (id, thunkAPI) => {
+  async ({ id, remarks }, thunkAPI) => {
     try {
       const token = thunkAPI.getState().auth.accessToken;
-      return await claimService.returnClaim(id, token);
+      return await claimService.returnClaim(id, remarks, token);
     } catch (error) {
       const message =
         (error.response &&

@@ -24,25 +24,37 @@ const Sidebar = () => {
         </button>
       </div>
       <nav className="flex-grow mt-8">
-        <Link
-          to="/dashboard"
-          className={`flex items-center py-3 px-4 rounded-lg transition-colors duration-200 ${ 
-            location.pathname === '/dashboard' ? 'bg-gray-700' : 'hover:bg-gray-800'
-          }`}
-        >
-          <FaTachometerAlt className="mr-3" />
-          Dashboard
-        </Link>
-        <Link
-          to="/apply-claim"
-          className={`flex items-center py-3 px-4 mt-2 rounded-lg transition-colors duration-200 ${ 
-            location.pathname === '/apply-claim' ? 'bg-gray-700' : 'hover:bg-gray-800'
-          }`}
-        >
-          <FaPlus className="mr-3" />
-          Apply Claim
-        </Link>
-        {user && user.role === 'Finance Officer' && (
+        {user && user.role === 'Manager' ? (
+          <>
+            <Link
+              to="/manager/dashboard"
+              className={`flex items-center py-3 px-4 rounded-lg transition-colors duration-200 ${ 
+                location.pathname === '/manager/dashboard' ? 'bg-gray-700' : 'hover:bg-gray-800'
+              }`}
+            >
+              <FaTachometerAlt className="mr-3" />
+              Manager Dashboard
+            </Link>
+            <Link
+              to="/apply-claim"
+              className={`flex items-center py-3 px-4 mt-2 rounded-lg transition-colors duration-200 ${ 
+                location.pathname === '/apply-claim' ? 'bg-gray-700' : 'hover:bg-gray-800'
+              }`}
+            >
+              <FaPlus className="mr-3" />
+              Apply Claim
+            </Link>
+            <Link
+              to="/dashboard"
+              className={`flex items-center py-3 px-4 rounded-lg transition-colors duration-200 ${ 
+                location.pathname === '/dashboard' ? 'bg-gray-700' : 'hover:bg-gray-800'
+              }`}
+            >
+              <FaTachometerAlt className="mr-3" />
+              Track Claims
+            </Link>
+          </>
+        ) : user && user.role === 'Finance Officer' ? (
           <Link
             to="/finance/dashboard"
             className={`flex items-center py-3 px-4 mt-2 rounded-lg transition-colors duration-200 ${ 
@@ -52,6 +64,27 @@ const Sidebar = () => {
             <FaMoneyBillWave className="mr-3" />
             Finance Dashboard
           </Link>
+        ) : (
+          <>
+            <Link
+              to="/dashboard"
+              className={`flex items-center py-3 px-4 rounded-lg transition-colors duration-200 ${ 
+                location.pathname === '/dashboard' ? 'bg-gray-700' : 'hover:bg-gray-800'
+              }`}
+            >
+              <FaTachometerAlt className="mr-3" />
+              Claim Details
+            </Link>
+            <Link
+              to="/apply-claim"
+              className={`flex items-center py-3 px-4 mt-2 rounded-lg transition-colors duration-200 ${ 
+                location.pathname === '/apply-claim' ? 'bg-gray-700' : 'hover:bg-gray-800'
+              }`}
+            >
+              <FaPlus className="mr-3" />
+              Apply Claim
+            </Link>
+          </>
         )}
       </nav>
     </div>
