@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const ApproverSchema = new mongoose.Schema({
   approverId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'RoleMaster',
   },
   level: {
     type: Number,

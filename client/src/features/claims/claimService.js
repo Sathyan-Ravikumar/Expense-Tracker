@@ -15,8 +15,20 @@ const createClaim = async (claimData, token) => {
   return response.data;
 };
 
-// Get user claims
+// Get all claims for reviewer
 const getClaims = async (token) => {
+  const config = {
+    headers: {
+      'x-auth-token': token,
+    },
+  };
+
+  const response = await axios.get(API_URL, config);
+  return response.data.data;
+};
+
+// Get user claims
+const getMyClaims = async (token) => {
   const config = {
     headers: {
       'x-auth-token': token,
@@ -90,6 +102,7 @@ const returnClaim = async (claimId, remarks, token) => {
 const claimService = {
   createClaim,
   getClaims,
+  getMyClaims,
   deleteClaim,
   reimburseClaim,
   approveClaim,

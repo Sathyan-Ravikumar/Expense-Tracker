@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import Spinner from '../components/Spinner';
 import Sidebar from '../components/Sidebar';
-import { getClaims, reimburseClaim, reset, approveClaim, rejectClaim, returnClaim } from '../features/claims/claimSlice';
+import { getClaims, reimburseClaim, reset, approveClaim } from '../features/claims/claimSlice';
 import { toast } from 'react-hot-toast';
-import { FaFileInvoiceDollar, FaCheckCircle, FaBars, FaClock } from 'react-icons/fa';
+import { FaFileInvoiceDollar, FaBars, FaClock, FaCheck, FaTimes, FaUndo, FaPaperclip, FaMoneyBillWave } from 'react-icons/fa';
 import ReturnClaimModal from '../components/ReturnClaimModal';
 import RejectClaimModal from '../components/RejectClaimModal';
 
@@ -124,6 +124,8 @@ function FinanceDashboard() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Claim Type</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attachment</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
@@ -139,12 +141,30 @@ function FinanceDashboard() {
                       {claim.status.statusName}
                     </span>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {(claim.approvalHistory.length > 0) && 
+                      claim.approvalHistory[claim.approvalHistory.length - 1].remarks
+                    }
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {claim.attachments && claim.attachments.length > 0 && (
+                      <a href={claim.attachments[0]} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-900" title="View Attachment">
+                        View
+                      </a>
+                    )}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <>
-                        <button onClick={() => handleApprove(claim._id)} className="text-green-600 hover:text-green-900 ml-4">Approve</button>
-                        <button onClick={() => handleReject(claim._id)} className="text-red-600 hover:text-red-900 ml-4">Reject</button>
-                        <button onClick={() => handleReturn(claim._id)} className="text-yellow-600 hover:text-yellow-900 ml-4">Return</button>
-                      </>
+                      <div className="flex items-center justify-end space-x-4">
+                        <button onClick={() => handleApprove(claim._id)} className="text-green-600 hover:text-green-900" title="Approve">
+                          <FaCheck />
+                        </button>
+                        <button onClick={() => handleReject(claim._id)} className="text-red-600 hover:text-red-900" title="Reject">
+                          <FaTimes />
+                        </button>
+                        <button onClick={() => handleReturn(claim._id)} className="text-yellow-600 hover:text-yellow-900" title="Return">
+                          <FaUndo />
+                        </button>
+                      </div>
                   </td>
                 </tr>
               ))}
@@ -162,6 +182,8 @@ function FinanceDashboard() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Claim Type</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attachment</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
@@ -177,8 +199,22 @@ function FinanceDashboard() {
                       {claim.status.statusName}
                     </span>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {(claim.approvalHistory.length > 0) && 
+                      claim.approvalHistory[claim.approvalHistory.length - 1].remarks
+                    }
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {claim.attachments && claim.attachments.length > 0 && (
+                      <a href={claim.attachments[0]} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-900" title="View Attachment">
+                        View
+                      </a>
+                    )}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button onClick={() => handleReimburse(claim._id)} className="text-green-600 hover:text-green-900 ml-4">Reimburse</button>
+                    <button onClick={() => handleReimburse(claim._id)} className="text-green-600 hover:text-green-900" title="Reimburse">
+                      <FaMoneyBillWave />
+                    </button>
                   </td>
                 </tr>
               ))}

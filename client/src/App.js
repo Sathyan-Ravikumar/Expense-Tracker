@@ -8,6 +8,7 @@ import ApplyClaim from './pages/ApplyClaim';
 import ManagerDashboard from './pages/ManagerDashboard';
 import FinanceDashboard from './pages/FinanceDashboard';
 import PrivateRoute from './components/PrivateRoute';
+import Home from './pages/Home';
 import { useSelector } from 'react-redux';
 
 function App() {
@@ -22,12 +23,10 @@ function App() {
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
             <Route path="/apply-claim" element={<PrivateRoute><ApplyClaim /></PrivateRoute>} />
-            {/* <Route path="/manager/dashboard" element={<PrivateRoute roles={['Manager']}><ManagerDashboard /></PrivateRoute>} /> */}
+            <Route path="/manager/dashboard" element={<PrivateRoute roles={['Manager']}><ManagerDashboard /></PrivateRoute>} />
             <Route path="/finance/dashboard" element={<PrivateRoute roles={['Finance Officer']}><FinanceDashboard /></PrivateRoute>} />
-                        <Route path="/manager/dashboard" element={<ManagerDashboard />} />
-
           </Route>
-          <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Navigate to="/login" />} />
+          <Route path="/" element={<Home />} />
         </Routes>
       </Router>
       <Toaster />

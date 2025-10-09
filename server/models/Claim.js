@@ -36,7 +36,7 @@ const ClaimSchema = new mongoose.Schema({
     {
       approver: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'RoleMaster',
       },
       status: {
         type: mongoose.Schema.Types.ObjectId,

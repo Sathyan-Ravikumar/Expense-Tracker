@@ -29,6 +29,25 @@ export const createClaim = createAsyncThunk(
 );
 
 // Get user claims
+export const getMyClaims = createAsyncThunk(
+  'claims/getMy',
+  async (_, thunkAPI) => {
+    try {
+      const token = thunkAPI.getState().auth.accessToken;
+      return await claimService.getMyClaims(token);
+    } catch (error) {
+      const message =
+        (error.response &&
+          error.response.data &&
+          error.response.data.message) ||
+        error.message ||
+        error.toString();
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
+// Get all claims for reviewer
 export const getClaims = createAsyncThunk(
   'claims/getAll',
   async (_, thunkAPI) => {
@@ -172,6 +191,19 @@ export const claimSlice = createSlice({
         state.claims = action.payload;
       })
       .addCase(getClaims.rejected, (state, action) => {
+        state.isLoading = false;
+        state.isError = true;
+        state.message = action.payload;
+      })
+      .addCase(getMyClaims.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(getMyClaims.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isSuccess = true;
+        state.claims = action.payload;
+      })
+      .addCase(getMyClaims.rejected, (state, action) => {
         state.isLoading = false;
         state.isError = true;
         state.message = action.payload;

@@ -16,19 +16,22 @@ exports.getClaims = async (req, res, next) => {
   try {
     let claims;
     if (req.user.role.roleName === 'Manager') {
-      const teamUsers = await User.find({ team: req.user.team });
-      const userIds = teamUsers.map((user) => user._id);
+      // Find users who report to the current manager
+      const employees = await User.find({ manager: req.user.id });
+      const employeeIds = employees.map((employee) => employee._id);
+
+      // Include manager's own claims as well
+      const userIds = [req.user.id, ...employeeIds];
+
       claims = await Claim.find({ user: { $in: userIds } })
         .populate('user', 'name email')
         .populate('claimType', 'typeName')
-        .populate('status', 'statusName')
-        .populate({ path: 'approvalHistory.approver', model: 'RoleMaster' });
+        .populate('status', 'statusName');
     } else {
       claims = await Claim.find()
         .populate('user', 'name email')
         .populate('claimType', 'typeName')
-        .populate('status', 'statusName')
-        .populate({ path: 'approvalHistory.approver', model: 'RoleMaster' });
+        .populate('status', 'statusName');
     }
     res.status(200).json({ success: true, data: claims });
   } catch (err) {
@@ -45,7 +48,6 @@ exports.getMyClaims = async (req, res, next) => {
       .populate('user', 'name email')
       .populate('claimType', 'typeName')
       .populate('status', 'statusName')
-      .populate({ path: 'approvalHistory.approver', model: 'RoleMaster' })
       .populate('approvalHistory.status', 'statusName');
     res.status(200).json({ success: true, data: claims });
   } catch (err) {
