@@ -39,6 +39,30 @@ const getMyClaims = async (token) => {
   return response.data.data;
 };
 
+// Get single claim
+const getClaim = async (claimId, token) => {
+  const config = {
+    headers: {
+      'x-auth-token': token,
+    },
+  };
+
+  const response = await axios.get(API_URL + claimId, config);
+  return response.data.data;
+};
+
+// Update user claim
+const updateClaim = async (claimId, claimData, token) => {
+  const config = {
+    headers: {
+      'x-auth-token': token,
+    },
+  };
+
+  const response = await axios.put(API_URL + claimId, claimData, config);
+  return response.data.data;
+};
+
 // Delete user claim
 const deleteClaim = async (claimId, token) => {
   const config = {

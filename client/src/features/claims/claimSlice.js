@@ -3,6 +3,7 @@ import claimService from './claimService';
 
 const initialState = {
   claims: [],
+  claim: {},
   isError: false,
   isSuccess: false,
   isLoading: false,
@@ -54,6 +55,44 @@ export const getClaims = createAsyncThunk(
     try {
       const token = thunkAPI.getState().auth.accessToken;
       return await claimService.getClaims(token);
+    } catch (error) {
+      const message =
+        (error.response &&
+          error.response.data &&
+          error.response.data.message) ||
+        error.message ||
+        error.toString();
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
+// Get single claim
+export const getClaim = createAsyncThunk(
+  'claims/get',
+  async (claimId, thunkAPI) => {
+    try {
+      const token = thunkAPI.getState().auth.accessToken;
+      return await claimService.getClaim(claimId, token);
+    } catch (error) {
+      const message =
+        (error.response &&
+          error.response.data &&
+          error.response.data.message) ||
+        error.message ||
+        error.toString();
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
+// Update user claim
+export const updateClaim = createAsyncThunk(
+  'claims/update',
+  async ({ id, claimData }, thunkAPI) => {
+    try {
+      const token = thunkAPI.getState().auth.accessToken;
+      return await claimService.updateClaim(id, claimData, token);
     } catch (error) {
       const message =
         (error.response &&
@@ -166,6 +205,12 @@ export const claimSlice = createSlice({
   initialState,
   reducers: {
     reset: (state) => initialState,
+    resetCurrentClaim: (state) => {
+        state.claim = {};
+        state.isError = false;
+        state.isSuccess = false;
+        state.message = '';
+    }
   },
   extraReducers: (builder) => {
     builder
@@ -204,6 +249,37 @@ export const claimSlice = createSlice({
         state.claims = action.payload;
       })
       .addCase(getMyClaims.rejected, (state, action) => {
+        state.isLoading = false;
+        state.isError = true;
+        state.message = action.payload;
+      })
+      .addCase(getClaim.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(getClaim.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isSuccess = true;
+        state.claim = action.payload;
+      })
+      .addCase(getClaim.rejected, (state, action) => {
+        state.isLoading = false;
+        state.isError = true;
+        state.message = action.payload;
+      })
+      .addCase(updateClaim.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(updateClaim.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isSuccess = true;
+        const index = state.claims.findIndex(
+          (claim) => claim._id === action.payload._id
+        );
+        if (index !== -1) {
+          state.claims[index] = action.payload;
+        }
+      })
+      .addCase(updateClaim.rejected, (state, action) => {
         state.isLoading = false;
         state.isError = true;
         state.message = action.payload;
@@ -298,5 +374,5 @@ export const claimSlice = createSlice({
   },
 });
 
-export const { reset } = claimSlice.actions;
+export const { reset, resetCurrentClaim } = claimSlice.actions;
 export default claimSlice.reducer;

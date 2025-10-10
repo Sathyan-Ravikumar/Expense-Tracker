@@ -1,14 +1,22 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import Spinner from '../components/Spinner';
-import Sidebar from '../components/Sidebar';
-import { getMyClaims, reset } from '../features/claims/claimSlice';
+import { getMyClaims, reset, deleteClaim } from '../features/claims/claimSlice';
 import { toast } from 'react-hot-toast';
-import { FaFileInvoiceDollar, FaClock, FaCheckCircle, FaTimesCircle, FaBars } from 'react-icons/fa';
+import { FaFileInvoiceDollar, FaClock, FaCheckCircle, FaTimesCircle, FaEdit, FaTrash } from 'react-icons/fa';
+import Spinner from '../components/Spinner';
+import ConfirmationModal from '../components/ConfirmationModal';
+import EditClaimModal from '../components/EditClaimModal';
+import DashboardLayout from '../components/DashboardLayout';
+import StatCard from '../components/StatCard';
+import ClaimsAccordion from '../components/ClaimsAccordion';
 
 function Dashboard() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [claimIdToDelete, setClaimIdToDelete] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [claimIdToEdit, setClaimIdToEdit] = useState(null);
+
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
@@ -16,6 +24,12 @@ function Dashboard() {
   const { claims, isLoading, isError, message } = useSelector(
     (state) => state.claims
   );
+
+  useEffect(() => {
+    if (isError) {
+      toast.error(message);
+    }
+  }, [isError, message]);
 
   useEffect(() => {
     if (!user) {
@@ -29,124 +43,110 @@ function Dashboard() {
     };
   }, [user, navigate, dispatch]);
 
-  useEffect(() => {
-    if (isError) {
-      toast.error(message);
-    }
-  }, [isError, message]);
+  const handleDeleteClick = (claimId) => {
+    setClaimIdToDelete(claimId);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    dispatch(deleteClaim(claimIdToDelete));
+    setIsDeleteModalOpen(false);
+    setClaimIdToDelete(null);
+    toast.success('Claim deleted successfully');
+  };
+
+  const handleEditClick = (claimId) => {
+    setClaimIdToEdit(claimId);
+    setIsEditModalOpen(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setClaimIdToEdit(null);
+    dispatch(getMyClaims());
+  };
 
   if (isLoading) {
     return <Spinner />;
   }
 
   const totalClaims = claims ? claims.length : 0;
-  const pendingClaims = claims ? claims.filter((claim) => claim.status && claim.status.statusName === 'Pending').length : 0;
+  const pendingClaims = claims ? claims.filter((claim) => claim.status && claim.status.statusName.startsWith('Pending')).length : 0;
   const approvedClaims = claims ? claims.filter((claim) => claim.status && claim.status.statusName === 'Approved').length : 0;
   const rejectedClaims = claims ? claims.filter((claim) => claim.status && claim.status.statusName === 'Rejected').length : 0;
 
+  const renderHeader = () => (
+    <>
+        <div className="w-1/4 font-semibold text-gray-600">Claim ID</div>
+        <div className="w-1/4 font-semibold text-gray-600">Claim Type</div>
+        <div className="w-1/4 font-semibold text-gray-600">Amount</div>
+        <div className="w-1/4 font-semibold text-gray-600">Status</div>
+    </>
+  );
+
+  const renderRow = (claim, getStatusColor) => (
+    <>
+        <div className="w-1/4 text-gray-800 font-medium">{claim.claimId}</div>
+        <div className="w-1/4 text-gray-600">{claim.claimType?.typeName}</div>
+        <div className="w-1/4 text-gray-800 font-bold">${claim.amount}</div>
+        <div className="w-1/4">
+        {claim.status && (
+            <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(claim.status.statusName)}`}>
+            {claim.status.statusName}
+            </span>
+        )}
+        </div>
+    </>
+  );
+
+  const renderActions = (claim) => {
+    const hasBeenApproved = claim.approvalHistory?.some(h => h.status && h.status.statusName === 'Approved');
+    const canEditOrDelete = claim.status?.statusName === 'Returned' || !hasBeenApproved;
+
+    return canEditOrDelete ? (
+        <>
+            <button onClick={() => handleEditClick(claim._id)} className="text-indigo-600 hover:text-indigo-900" title="Edit">
+                <FaEdit />
+            </button>
+            <button onClick={() => handleDeleteClick(claim._id)} className="text-red-600 hover:text-red-900" title="Delete">
+                <FaTrash />
+            </button>
+        </>
+    ) : (
+        <div className="w-12"></div> // Placeholder for alignment
+    );
+  };
+
   return (
-    <div className="flex bg-gray-100 min-h-screen">
-      <div className={`fixed inset-0 z-20 transition-opacity bg-black opacity-50 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`} onClick={() => setSidebarOpen(false)}></div>
-      <div className={`fixed inset-y-0 left-0 z-30 w-64 transition duration-300 transform bg-gray-900 lg:translate-x-0 lg:static lg:inset-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <Sidebar />
+    <DashboardLayout pageTitle="My Claims">
+      <ConfirmationModal 
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Confirm Deletion"
+        message="Are you sure you want to delete this claim? This action cannot be undone."
+      />
+      {isEditModalOpen && (
+        <EditClaimModal 
+            claimId={claimIdToEdit} 
+            onClose={handleCloseEditModal} 
+        />
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+        <StatCard icon={<FaFileInvoiceDollar className="text-4xl text-blue-500 mr-4" />} title="Total Claims" value={totalClaims} />
+        <StatCard icon={<FaClock className="text-4xl text-yellow-500 mr-4" />} title="Pending" value={pendingClaims} />
+        <StatCard icon={<FaCheckCircle className="text-4xl text-green-500 mr-4" />} title="Approved" value={approvedClaims} />
+        <StatCard icon={<FaTimesCircle className="text-4xl text-red-500 mr-4" />} title="Rejected" value={rejectedClaims} />
       </div>
-      <main className="flex-1 p-4 lg:p-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800">Welcome, {user && user.name}</h1>
-            <p className="text-gray-600">{user && user.email}</p>
-          </div>
-          <Link to="/apply-claim" className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">
-            Apply Claim
-          </Link>
-          <button className="lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
-            <FaBars className="text-2xl text-gray-800" />
-          </button>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow-md flex items-center">
-            <FaFileInvoiceDollar className="text-4xl text-blue-500 mr-4" />
-            <div>
-              <h3 className="text-lg font-semibold text-gray-600">Total Claims</h3>
-              <p className="text-3xl font-bold text-gray-800">{totalClaims}</p>
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md flex items-center">
-            <FaClock className="text-4xl text-yellow-500 mr-4" />
-            <div>
-              <h3 className="text-lg font-semibold text-gray-600">Pending</h3>
-              <p className="text-3xl font-bold text-gray-800">{pendingClaims}</p>
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md flex items-center">
-            <FaCheckCircle className="text-4xl text-green-500 mr-4" />
-            <div>
-              <h3 className="text-lg font-semibold text-gray-600">Approved</h3>
-              <p className="text-3xl font-bold text-gray-800">{approvedClaims}</p>
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md flex items-center">
-            <FaTimesCircle className="text-4xl text-red-500 mr-4" />
-            <div>
-              <h3 className="text-lg font-semibold text-gray-600">Rejected</h3>
-              <p className="text-3xl font-bold text-gray-800">{rejectedClaims}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-md overflow-x-auto">
-          <table className="min-w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Claim ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Claim Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attachment</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {claims && claims.length > 0 ? (
-                claims.map((claim) => (
-                  <tr key={claim._id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{claim.claimId}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{claim.claimType && claim.claimType.typeName}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${claim.amount}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{claim.description}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {claim.status && (
-                        <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ 
-                            claim.status.statusName === 'Approved' ? 'bg-green-100 text-green-800' : 
-                            claim.status.statusName === 'Rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800' 
-                          }`}>
-                          {claim.status.statusName}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {claim.attachments && claim.attachments.length > 0 && (
-                        <a href={claim.attachments[0]} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-900">
-                          View
-                        </a>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button className="text-indigo-600 hover:text-indigo-900">View</button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="5" className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">No claims found.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </main>
-    </div>
+
+      <ClaimsAccordion
+        claims={claims}
+        headerRenderer={renderHeader}
+        rowRenderer={renderRow}
+        actionsRenderer={renderActions}
+      />
+    </DashboardLayout>
   );
 }
 

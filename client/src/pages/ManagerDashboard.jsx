@@ -2,18 +2,22 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import Spinner from '../components/Spinner';
-import Sidebar from '../components/Sidebar';
 import { getClaims, reset, approveClaim } from '../features/claims/claimSlice';
 import { toast } from 'react-hot-toast';
-import { FaFileInvoiceDollar, FaClock,  FaBars, FaCheck, FaTimes, FaUndo, FaPaperclip } from 'react-icons/fa';
+import { FaFileInvoiceDollar, FaClock, FaCheck, FaTimes, FaUndo } from 'react-icons/fa';
 import ReturnClaimModal from '../components/ReturnClaimModal';
 import RejectClaimModal from '../components/RejectClaimModal';
+import ConfirmationModal from '../components/ConfirmationModal';
+import DashboardLayout from '../components/DashboardLayout';
+import StatCard from '../components/StatCard';
+import ClaimsAccordion from '../components/ClaimsAccordion';
 
 function ManagerDashboard() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedClaimId, setSelectedClaimId] = useState(null);
+  const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
+  const [claimIdToApprove, setClaimIdToApprove] = useState(null);
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -27,7 +31,9 @@ function ManagerDashboard() {
     if (isError) {
       toast.error(message);
     }
+  }, [isError, message]);
 
+  useEffect(() => {
     if (!user) {
       navigate('/login');
     } else {
@@ -37,10 +43,18 @@ function ManagerDashboard() {
     return () => {
       dispatch(reset());
     };
-  }, [user, navigate, dispatch, isError, message]);
+  }, [user, navigate, dispatch]);
 
-  const handleApprove = (claimId) => {
-    dispatch(approveClaim(claimId));
+  const handleApproveClick = (claimId) => {
+    setClaimIdToApprove(claimId);
+    setIsApproveModalOpen(true);
+  };
+
+  const handleConfirmApprove = () => {
+    dispatch(approveClaim(claimIdToApprove));
+    setIsApproveModalOpen(false);
+    setClaimIdToApprove(null);
+    toast.success('Claim approved');
   };
 
   const handleReject = (claimId) => {
@@ -67,111 +81,68 @@ function ManagerDashboard() {
     return <Spinner />;
   }
 
-  const totalClaims = claims.length;
-  const pendingClaims = claims.filter((claim) => claim.status && claim.status.statusName === 'Pending').length;
+  const pendingClaimsForManager = claims.filter(c => c.status?.statusName === 'Pending: Manager');
+
+  const renderHeader = () => (
+    <>
+        <div className="w-1/4 font-semibold text-gray-600">Employee</div>
+        <div className="w-1/4 font-semibold text-gray-600">Claim Type</div>
+        <div className="w-1/4 font-semibold text-gray-600">Amount</div>
+        <div className="w-1/4 font-semibold text-gray-600">Status</div>
+    </>
+  );
+
+  const renderRow = (claim, getStatusColor) => (
+    <>
+        <div className="w-1/4 text-gray-800 font-medium">{claim.user.name}</div>
+        <div className="w-1/4 text-gray-600">{claim.claimType?.typeName}</div>
+        <div className="w-1/4 text-gray-800 font-bold">${claim.amount}</div>
+        <div className="w-1/4">
+        {claim.status && (
+            <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(claim.status.statusName)}`}>
+            {claim.status.statusName}
+            </span>
+        )}
+        </div>
+    </>
+  );
+
+  const renderActions = (claim) => {
+    const isActionable = claim.status?.statusName === 'Pending: Manager' && user.role?.roleName === 'Manager';
+    return isActionable && (
+        <>
+            <button onClick={() => handleApproveClick(claim._id)} className="text-green-600 hover:text-green-900" title="Approve"><FaCheck /></button>
+            <button onClick={() => handleReject(claim._id)} className="text-red-600 hover:text-red-900" title="Reject"><FaTimes /></button>
+            <button onClick={() => handleReturn(claim._id)} className="text-yellow-600 hover:text-yellow-900" title="Return"><FaUndo /></button>
+        </>
+    );
+  };
 
   return (
-    <div className="flex bg-gray-100 min-h-screen">
+    <DashboardLayout pageTitle="Manager Dashboard">
       {showReturnModal && <ReturnClaimModal claimId={selectedClaimId} closeModal={closeReturnModal} />}
       {showRejectModal && <RejectClaimModal claimId={selectedClaimId} closeModal={closeRejectModal} />}
-      <div className={`fixed inset-0 z-20 transition-opacity bg-black opacity-50 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`} onClick={() => setSidebarOpen(false)}></div>
-      <div className={`fixed inset-y-0 left-0 z-30 w-64 transition duration-300 transform bg-gray-900 lg:translate-x-0 lg:static lg:inset-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <Sidebar />
+      <ConfirmationModal 
+        isOpen={isApproveModalOpen}
+        onClose={() => setIsApproveModalOpen(false)}
+        onConfirm={handleConfirmApprove}
+        title="Confirm Approval"
+        message="Are you sure you want to approve this claim?"
+        confirmButtonClass="bg-green-500 hover:bg-green-600"
+      />
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+        <StatCard icon={<FaFileInvoiceDollar className="text-4xl text-blue-500 mr-4" />} title="Total Claims in View" value={claims.length} />
+        <StatCard icon={<FaClock className="text-4xl text-yellow-500 mr-4" />} title="Needs Your Action" value={pendingClaimsForManager.length} />
       </div>
-      <main className="flex-1 p-4 lg:p-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800">Manager Dashboard</h1>
-            <p className="text-gray-600">Welcome, {user && user.name}</p>
-          </div>
-          <button className="lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
-            <FaBars className="text-2xl text-gray-800" />
-          </button>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow-md flex items-center">
-            <FaFileInvoiceDollar className="text-4xl text-blue-500 mr-4" />
-            <div>
-              <h3 className="text-lg font-semibold text-gray-600">Total Pending</h3>
-              <p className="text-3xl font-bold text-gray-800">{totalClaims}</p>
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md flex items-center">
-            <FaClock className="text-4xl text-yellow-500 mr-4" />
-            <div>
-              <h3 className="text-lg font-semibold text-gray-600">Needs Action</h3>
-              <p className="text-3xl font-bold text-gray-800">{pendingClaims}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-md overflow-x-auto">
-          <table className="min-w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Claim ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Claim Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attachment</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {claims.map((claim) => (
-                <tr key={claim._id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{claim.user.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{claim.claimId}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{claim.claimType.typeName}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${claim.amount}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{claim.description}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    {claim.status && (
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ 
-                          claim.status.statusName === 'Approved' ? 'bg-green-100 text-green-800' : 
-                          claim.status.statusName === 'Rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800' 
-                        }`}>
-                        {claim.status.statusName}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {(claim.approvalHistory.length > 0) && 
-                      claim.approvalHistory[claim.approvalHistory.length - 1].remarks
-                    }
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {claim.attachments && claim.attachments.length > 0 && (
-                      <a href={claim.attachments[0]} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-900" title="View Attachment">
-                        View
-                      </a>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    {user && user.role && user.role.roleName === 'Manager' && (
-                      <div className="flex items-center justify-end space-x-4">
-                        <button onClick={() => handleApprove(claim._id)} className="text-green-600 hover:text-green-900" title="Approve">
-                          <FaCheck />
-                        </button>
-                        <button onClick={() => handleReject(claim._id)} className="text-red-600 hover:text-red-900" title="Reject">
-                          <FaTimes />
-                        </button>
-                        <button onClick={() => handleReturn(claim._id)} className="text-yellow-600 hover:text-yellow-900" title="Return">
-                          <FaUndo />
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </main>
-    </div>
+      
+      <ClaimsAccordion
+        claims={claims}
+        headerRenderer={renderHeader}
+        rowRenderer={renderRow}
+        actionsRenderer={renderActions}
+      />
+    </DashboardLayout>
   );
 }
 

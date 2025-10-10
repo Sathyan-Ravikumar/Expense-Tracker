@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import Spinner from '../components/Spinner';
-import { getClaims, reimburseClaim, reset, approveClaim } from '../features/claims/claimSlice';
+import { getClaims, reset, approveClaim } from '../features/claims/claimSlice';
 import { toast } from 'react-hot-toast';
-import { FaFileInvoiceDollar, FaClock, FaCheck, FaTimes, FaUndo, FaMoneyBillWave } from 'react-icons/fa';
+import { FaFileInvoiceDollar, FaClock, FaCheck, FaTimes, FaUndo } from 'react-icons/fa';
 import ReturnClaimModal from '../components/ReturnClaimModal';
 import RejectClaimModal from '../components/RejectClaimModal';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -12,7 +12,7 @@ import DashboardLayout from '../components/DashboardLayout';
 import StatCard from '../components/StatCard';
 import ClaimsAccordion from '../components/ClaimsAccordion';
 
-function FinanceDashboard() {
+function AdminDashboard() {
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedClaimId, setSelectedClaimId] = useState(null);
@@ -67,10 +67,6 @@ function FinanceDashboard() {
     setShowReturnModal(true);
   };
 
-  const handleReimburse = (claimId) => {
-    dispatch(reimburseClaim(claimId));
-  };
-
   const closeReturnModal = () => {
     setShowReturnModal(false);
     setSelectedClaimId(null);
@@ -85,13 +81,7 @@ function FinanceDashboard() {
     return <Spinner />;
   }
 
-  const pendingClaims = claims.filter(claim => {
-    if (!claim.status?.statusName.startsWith('Pending')) return false;
-    const lastApproverEntry = claim.approvalHistory[claim.approvalHistory.length - 1];
-    return lastApproverEntry && user.role && lastApproverEntry.approver?._id === user.role._id && lastApproverEntry.status?.statusName === 'Pending';
-  });
-
-  const approvedClaims = claims.filter((claim) => claim.status?.statusName === 'Approved' && !claim.reimbursed);
+  const pendingClaimsForHead = claims.filter(c => c.status?.statusName === 'Pending: Admin/Finance Head');
 
   const renderHeader = () => (
     <>
@@ -117,20 +107,19 @@ function FinanceDashboard() {
     </>
   );
 
-  const renderPendingActions = (claim) => (
-    <div className="flex items-center space-x-4">
-        <button onClick={() => handleApproveClick(claim._id)} className="text-green-600 hover:text-green-900" title="Approve"><FaCheck /></button>
-        <button onClick={() => handleReject(claim._id)} className="text-red-600 hover:text-red-900" title="Reject"><FaTimes /></button>
-        <button onClick={() => handleReturn(claim._id)} className="text-yellow-600 hover:text-yellow-900" title="Return"><FaUndo /></button>
-    </div>
-  );
-
-  const renderApprovedActions = (claim) => (
-    <button onClick={() => handleReimburse(claim._id)} className="text-green-600 hover:text-green-900" title="Reimburse"><FaMoneyBillWave /></button>
-  );
+  const renderActions = (claim) => {
+    const isActionable = claim.status?.statusName === 'Pending: Admin/Finance Head' && user.role?.roleName === 'Admin/Finance Head';
+    return isActionable && (
+        <>
+            <button onClick={() => handleApproveClick(claim._id)} className="text-green-600 hover:text-green-900" title="Approve"><FaCheck /></button>
+            <button onClick={() => handleReject(claim._id)} className="text-red-600 hover:text-red-900" title="Reject"><FaTimes /></button>
+            <button onClick={() => handleReturn(claim._id)} className="text-yellow-600 hover:text-yellow-900" title="Return"><FaUndo /></button>
+        </>
+    );
+  };
 
   return (
-    <DashboardLayout pageTitle="Finance Dashboard">
+    <DashboardLayout pageTitle="Admin Dashboard">
       {showReturnModal && <ReturnClaimModal claimId={selectedClaimId} closeModal={closeReturnModal} />}
       {showRejectModal && <RejectClaimModal claimId={selectedClaimId} closeModal={closeRejectModal} />}
       <ConfirmationModal 
@@ -141,30 +130,20 @@ function FinanceDashboard() {
         message="Are you sure you want to approve this claim?"
         confirmButtonClass="bg-green-500 hover:bg-green-600"
       />
-
+      
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
-        <StatCard icon={<FaClock className="text-4xl text-yellow-500 mr-4" />} title="Pending My Approval" value={pendingClaims.length} />
-        <StatCard icon={<FaFileInvoiceDollar className="text-4xl text-blue-500 mr-4" />} title="Ready to Reimburse" value={approvedClaims.length} />
+        <StatCard icon={<FaFileInvoiceDollar className="text-4xl text-blue-500 mr-4" />} title="Total Claims in System" value={claims.length} />
+        <StatCard icon={<FaClock className="text-4xl text-yellow-500 mr-4" />} title="Needs Your Action" value={pendingClaimsForHead.length} />
       </div>
-
+      
       <ClaimsAccordion
-        title="Pending My Approval"
-        claims={pendingClaims}
+        claims={claims}
         headerRenderer={renderHeader}
         rowRenderer={renderRow}
-        actionsRenderer={renderPendingActions}
+        actionsRenderer={renderActions}
       />
-
-      <ClaimsAccordion
-        title="Ready for Reimbursement"
-        claims={approvedClaims}
-        headerRenderer={renderHeader}
-        rowRenderer={renderRow}
-        actionsRenderer={renderApprovedActions}
-      />
-
     </DashboardLayout>
   );
 }
 
-export default FinanceDashboard;
+export default AdminDashboard;

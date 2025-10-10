@@ -3,6 +3,8 @@ const User = require('../models/User');
 const ClaimTypeMaster = require('../models/ClaimTypeMaster');
 const StatusMaster = require('../models/StatusMaster');
 const ApprovalRule = require('../models/ApprovalRule');
+const RoleMaster = require('../models/RoleMaster');
+const Notification = require('../models/Notification');
 
 // Function to generate a unique claim ID
 const generateClaimId = () => {
@@ -84,7 +86,7 @@ exports.getClaimsForApprover = async (req, res, next) => {
 // @access  Private
 exports.getClaim = async (req, res, next) => {
   try {
-    const claim = await Claim.findById(req.params.id).populate('user', 'name email');
+    const claim = await Claim.findById(req.params.id).populate('user', 'name email').populate('claimType');
     if (!claim) {
       return res.status(404).json({ success: false });
     }
@@ -105,31 +107,52 @@ exports.createClaim = async (req, res, next) => {
     }
 
     const { claimType, amount, description } = req.body;
-    console.log('claimType', claimType);
-    console.log('amount', amount);
 
-    // Validate claimType against ClaimTypeMaster
     const validClaimType = await ClaimTypeMaster.findById(claimType);
     if (!validClaimType) {
       return res.status(400).json({ success: false, message: 'Invalid Claim Type' });
     }
 
-    // Get Pending status ID
-    const pendingStatus = await StatusMaster.findOne({ statusName: 'Pending' });
-    if (!pendingStatus) {
-      return res.status(500).json({ success: false, message: 'Pending status not found. Please create it in StatusMaster.' });
-    }
-
-    // Find the approval rule for the claim
     const approvalRule = await ApprovalRule.findOne({
       claimType: validClaimType._id,
       amountMin: { $lte: amount },
       amountMax: { $gte: amount },
     });
-    console.log('approvalRule', approvalRule);
 
     if (!approvalRule || approvalRule.approvers.length === 0) {
       return res.status(400).json({ success: false, message: 'No approval rule found for this claim type and amount.' });
+    }
+    
+    const pendingStatus = await StatusMaster.findOne({ statusName: 'Pending' });
+    if (!pendingStatus) {
+      return res.status(500).json({ success: false, message: 'Generic Pending status not found.' });
+    }
+
+    // Determine the starting approver based on who is submitting
+    let firstApprover;
+    const submitterRole = req.user.role;
+    const submitterIndex = approvalRule.approvers.findIndex(
+        a => a.approverId.toString() === submitterRole._id.toString()
+    );
+
+    if (submitterIndex > -1 && submitterIndex < approvalRule.approvers.length - 1) {
+        // If submitter is in the chain, start with the next person
+        firstApprover = approvalRule.approvers[submitterIndex + 1];
+    } else {
+        // Otherwise, start from the beginning (for employees or those not in the chain)
+        firstApprover = approvalRule.approvers[0];
+    }
+
+    // Determine the specific pending status
+    let statusId = pendingStatus._id; // Default to generic pending
+    const firstApproverRole = await RoleMaster.findById(firstApprover.approverId);
+
+    if (firstApproverRole) {
+      const newStatusName = `Pending: ${firstApproverRole.roleName}`;
+      const newStatus = await StatusMaster.findOne({ statusName: newStatusName });
+      if (newStatus) {
+        statusId = newStatus._id; // Use specific status if found
+      }
     }
 
     const claimData = {
@@ -138,7 +161,7 @@ exports.createClaim = async (req, res, next) => {
       claimType: validClaimType._id,
       amount,
       description,
-      status: pendingStatus._id,
+      status: statusId,
       approvalHistory: [],
     };
 
@@ -146,8 +169,6 @@ exports.createClaim = async (req, res, next) => {
       claimData.attachments = [req.file.path];
     }
 
-    // Set the first approver
-    const firstApprover = approvalRule.approvers[0];
     claimData.approvalHistory.push({
       approver: firstApprover.approverId,
       status: pendingStatus._id,
@@ -155,7 +176,9 @@ exports.createClaim = async (req, res, next) => {
 
     const claim = await Claim.create(claimData);
     res.status(201).json({ success: true, data: claim });
+
   } catch (err) {
+    console.error(err);
     res.status(400).json({ success: false, message: err.message });
   }
 };
@@ -165,7 +188,7 @@ exports.createClaim = async (req, res, next) => {
 // @access  Private
 exports.updateClaim = async (req, res, next) => {
   try {
-    let claim = await Claim.findById(req.params.id);
+    let claim = await Claim.findById(req.params.id).populate('approvalHistory.status').populate('status');
 
     if (!claim) {
       return res.status(404).json({ success: false });
@@ -174,6 +197,16 @@ exports.updateClaim = async (req, res, next) => {
     // Make sure user is claim owner
     if (claim.user.toString() !== req.user.id) {
       return res.status(401).json({ success: false, message: 'Not authorized to update this claim' });
+    }
+
+    // Allow editing if claim is returned, otherwise block if it has any approvals.
+    if (claim.status.statusName !== 'Returned') {
+        const hasBeenApproved = claim.approvalHistory.some(
+            (history) => history.status.statusName === 'Approved'
+        );
+        if (hasBeenApproved) {
+            return res.status(400).json({ success: false, message: 'Cannot edit a claim that is already in the approval process.' });
+        }
     }
 
     claim = await Claim.findByIdAndUpdate(req.params.id, req.body, {
@@ -192,7 +225,7 @@ exports.updateClaim = async (req, res, next) => {
 // @access  Private
 exports.deleteClaim = async (req, res, next) => {
   try {
-    const claim = await Claim.findById(req.params.id);
+    const claim = await Claim.findById(req.params.id).populate('approvalHistory.status').populate('status');
 
     if (!claim) {
       return res.status(404).json({ success: false });
@@ -201,6 +234,16 @@ exports.deleteClaim = async (req, res, next) => {
     // Make sure user is claim owner
     if (claim.user.toString() !== req.user.id) {
       return res.status(401).json({ success: false, message: 'Not authorized to delete this claim' });
+    }
+
+    // Allow deleting if claim is returned, otherwise block if it has any approvals.
+    if (claim.status.statusName !== 'Returned') {
+        const hasBeenApproved = claim.approvalHistory.some(
+            (history) => history.status.statusName === 'Approved'
+        );
+        if (hasBeenApproved) {
+            return res.status(400).json({ success: false, message: 'Cannot delete a claim that is already in the approval process.' });
+        }
     }
 
     await claim.remove();
@@ -251,16 +294,31 @@ exports.approveClaim = async (req, res, next) => {
     const nextApprover = approvalRule.approvers[currentApproverIndex + 1];
 
     if (nextApprover) {
+      const nextApproverRole = await RoleMaster.findById(nextApprover.approverId);
+      const newStatusName = `Pending: ${nextApproverRole.roleName}`;
+      const newStatus = await StatusMaster.findOne({ statusName: newStatusName });
+      
       const pendingStatus = await StatusMaster.findOne({ statusName: 'Pending' });
+
+      if (newStatus) {
+        claim.status = newStatus._id;
+      } else {
+        claim.status = pendingStatus._id; // Fallback to generic pending
+      }
+
       claim.approvalHistory.push({
         approver: nextApprover.approverId,
-        status: pendingStatus._id,
+        status: pendingStatus._id, // History entry remains generic pending
       });
-    } else {
-      claim.status = approvedStatus._id;
-    }
-
     await claim.save();
+
+    // Create notification for the user
+    const finalStatus = await StatusMaster.findById(claim.status);
+    await Notification.create({
+      user: claim.user,
+      claim: claim._id,
+      message: `Your claim ${claim.claimId} has been updated to ${finalStatus.statusName}.`,
+    });
 
     res.status(200).json({ success: true, data: claim });
   } catch (err) {
@@ -302,12 +360,14 @@ exports.rejectClaim = async (req, res, next) => {
       return res.status(500).json({ success: false, message: 'Rejected status not found.' });
     }
 
-    claim.status = rejectedStatus._id;
-    const currentHistoryIndex = claim.approvalHistory.length - 1;
-    claim.approvalHistory[currentHistoryIndex].status = rejectedStatus._id;
-    claim.approvalHistory[currentHistoryIndex].remarks = req.body.remarks;
-
     await claim.save();
+
+    // Create notification for the user
+    await Notification.create({
+      user: claim.user,
+      claim: claim._id,
+      message: `Your claim ${claim.claimId} has been Rejected.`,
+    });
 
     res.status(200).json({ success: true, data: claim });
   } catch (err) {
@@ -351,10 +411,14 @@ exports.returnClaim = async (req, res, next) => {
 
     claim.status = returnedStatus._id;
     const currentHistoryIndex = claim.approvalHistory.length - 1;
-    claim.approvalHistory[currentHistoryIndex].status = returnedStatus._id;
-    claim.approvalHistory[currentHistoryIndex].remarks = req.body.remarks;
-
     await claim.save();
+
+    // Create notification for the user
+    await Notification.create({
+      user: claim.user,
+      claim: claim._id,
+      message: `Your claim ${claim.claimId} has been Returned for more information.`,
+    });
 
     res.status(200).json({ success: true, data: claim });
   } catch (err) {
@@ -387,9 +451,15 @@ exports.reimburseClaim = async (req, res, next) => {
 
     await claim.save();
 
+    // Create notification for the user
+    await Notification.create({
+      user: claim.user,
+      claim: claim._id,
+      message: `Your claim ${claim.claimId} has been Reimbursed.`,
+    });
+
     res.status(200).json({ success: true, data: claim });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }
 };
-

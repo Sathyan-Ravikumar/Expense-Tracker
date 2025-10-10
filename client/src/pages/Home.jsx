@@ -13,6 +13,8 @@ const Home = () => {
       case 'Admin/Finance Head':
         // Assuming there might be an admin dashboard in the future
         return <Navigate to="/admin/dashboard" />;
+      case 'System Admin':
+        return <Navigate to="/system-admin/dashboard" />;
       default:
         return <Navigate to="/dashboard" />;
     }

@@ -6,6 +6,11 @@ const NotificationSchema = new mongoose.Schema({
     ref: 'User',
     required: true,
   },
+  claim: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Claim',
+    required: true,
+  },
   message: {
     type: String,
     required: true,
@@ -14,13 +19,10 @@ const NotificationSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
-  claim: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Claim',
-  },
   createdAt: {
     type: Date,
     default: Date.now,
+    expires: '30d',
   },
 });
 

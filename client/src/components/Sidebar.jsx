@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FaTachometerAlt, FaPlus, FaSignOutAlt, FaUserShield, FaMoneyBillWave } from 'react-icons/fa';
+import { FaTachometerAlt, FaPlus, FaSignOutAlt, FaUserShield, FaMoneyBillWave, FaUserCog, FaBell } from 'react-icons/fa';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout, reset } from '../features/auth/authSlice';
 
@@ -8,6 +8,9 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
+  const { notifications } = useSelector((state) => state.notifications);
+
+  const unreadCount = notifications ? notifications.filter((n) => !n.isRead).length : 0;
 
   const onLogout = () => {
     dispatch(logout());
@@ -38,6 +41,9 @@ const Sidebar = () => {
         {/* Common Links */}
         <NavLink to="/dashboard" icon={<FaTachometerAlt className="mr-3" />}>My Claims</NavLink>
         <NavLink to="/apply-claim" icon={<FaPlus className="mr-3" />}>Apply Claim</NavLink>
+        <NavLink to="/notifications" icon={<FaBell className="mr-3" />}>
+          Notifications {unreadCount > 0 && <span className="ml-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">{unreadCount}</span>}
+        </NavLink>
 
         {/* Role-specific Links */}
         {user && user.role && (
@@ -48,7 +54,12 @@ const Sidebar = () => {
             {(user.role.roleName === 'Finance Officer' || user.role.roleName === 'Admin/Finance Head') && (
               <NavLink to="/finance/dashboard" icon={<FaMoneyBillWave className="mr-3" />}>Finance Dashboard</NavLink>
             )}
-            {/* Add other role-specific links here */}
+            {(user.role.roleName === 'Admin/Finance Head' || user.role.roleName === 'System Admin') && (
+              <NavLink to="/admin/dashboard" icon={<FaUserCog className="mr-3" />}>Admin Dashboard</NavLink>
+            )}
+            {user.role.roleName === 'System Admin' && (
+              <NavLink to="/system-admin/dashboard" icon={<FaUserCog className="mr-3" />}>System Admin</NavLink>
+            )}
           </>
         )}
       </nav>

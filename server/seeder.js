@@ -11,6 +11,7 @@ const StatusMaster = require('./models/StatusMaster');
 const ClaimTypeMaster = require('./models/ClaimTypeMaster');
 const ApprovalRule = require('./models/ApprovalRule');
 const User = require('./models/User');
+const Claim = require('./models/Claim');
 
 
 
@@ -25,6 +26,10 @@ const roles = [
 
 const statuses = [
   { statusName: 'Pending' },
+  { statusName: 'Pending: Manager' },
+  { statusName: 'Pending: Finance Officer' },
+  { statusName: 'Pending: Finance Head' },
+  { statusName: 'Pending: System Admin' },
   { statusName: 'Approved' },
   { statusName: 'Rejected' },
   { statusName: 'Returned' },
