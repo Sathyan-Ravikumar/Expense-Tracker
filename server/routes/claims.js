@@ -25,7 +25,7 @@ router.route('/my').get(protect, getMyClaims);
 router
   .route('/:id')
   .get(protect, getClaim)
-  .put(protect, updateClaim)
+  .put(protect, upload, updateClaim)
   .delete(protect, deleteClaim);
 
 router.route('/:id/approve').put(protect, authorize('Manager', 'Finance Officer', 'Admin/Finance Head'), approveClaim);

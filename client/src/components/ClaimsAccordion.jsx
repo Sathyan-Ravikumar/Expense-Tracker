@@ -41,14 +41,35 @@ function ClaimsAccordion({ claims, title, headerRenderer, rowRenderer, actionsRe
                 {isAccordionOpen && (
                   <div className="p-4 border-t border-gray-200 bg-gray-50">
                     <div className="flex justify-between items-start">
-                      <div>
-                        <p className="text-gray-700 mb-2"><strong>Description:</strong> {claim.description}</p>
-                        {reason && <p className="text-gray-700 mb-2"><strong>Reason:</strong> {reason}</p>}
-                        {claim.attachments && claim.attachments.length > 0 && (
-                          <a href={claim.attachments[0]} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-900 font-semibold">
-                            View Attachment
-                          </a>
-                        )}
+                      <div className="w-full">
+                        <div className="table w-full">
+                            <div className="table-row">
+                                <div className="table-cell py-2 pr-4">
+                                    <span className="font-semibold">Description: </span>{claim.description}
+                                </div>
+
+                                {reason && (
+                                    <div className="table-cell py-2 pr-4">
+                                        <span className="font-semibold">Reason: </span>{reason}
+                                    </div>
+                                )}
+
+                                {claim.approvalHistory && claim.approvalHistory.length > 0 && (claim.status.statusName === 'Approved' || claim.status.statusName === 'Rejected' || claim.status.statusName === 'Returned') && (
+                                    <div className="table-cell py-2 pr-4">
+                                        <span className="font-semibold">{claim.status.statusName} by: </span>{claim.approvalHistory[claim.approvalHistory.length - 1].approver.email}
+                                    </div>
+                                )}
+
+                                {claim.attachments && claim.attachments.length > 0 && (
+                                    <div className="table-cell py-2 pr-4">
+                                        <span className="font-semibold">Attachment: </span>
+                                        <a href={claim.attachments[0]} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-900 font-semibold">
+                                            View Attachment
+                                        </a>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                       </div>
                       <div className="flex items-center space-x-4">
                         {actionsRenderer && actionsRenderer(claim)}

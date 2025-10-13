@@ -106,6 +106,14 @@ exports.deleteUser = async (req, res, next) => {
     if (!user) {
       return res.status(404).json({ success: false });
     }
+
+    // Create a notification for the System Admin
+    await SystemAdminNotification.create({
+      admin: req.user.id,
+      action: 'user_deleted',
+      affectedUser: user._id,
+    });
+
     res.status(200).json({ success: true, data: {} });
   } catch (err) {
     res.status(400).json({ success: false });

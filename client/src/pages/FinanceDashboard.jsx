@@ -13,6 +13,7 @@ import StatCard from '../components/StatCard';
 import ClaimsAccordion from '../components/ClaimsAccordion';
 import Pagination from '../components/Pagination';
 import FilterPanel from '../components/FilterPanel';
+import ReportModal from '../components/ReportModal';
 
 function FinanceDashboard() {
   const [showReturnModal, setShowReturnModal] = useState(false);
@@ -23,6 +24,7 @@ function FinanceDashboard() {
   const [activeTab, setActiveTab] = useState('Pending');
   const [currentPage, setCurrentPage] = useState(1);
   const [activeFilters, setActiveFilters] = useState({ claimType: '', minAmount: '', maxAmount: '', startDate: '', endDate: '', searchTerm: '' });
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -205,6 +207,7 @@ function FinanceDashboard() {
         message="Are you sure you want to approve this claim?"
         confirmButtonClass="bg-green-500 hover:bg-green-600"
       />
+      <ReportModal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
         <StatCard icon={<FaClock className="text-4xl text-yellow-500 mr-4" />} title="Pending Your Approval" value={pendingClaimsForOfficer.length} />
@@ -223,6 +226,7 @@ function FinanceDashboard() {
             </nav>
         </div>
         <div className="flex items-center space-x-4">
+            <button onClick={() => setIsReportModalOpen(true)} className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600">Generate Report</button>
             <div className="relative">
               <input
                   type="text"

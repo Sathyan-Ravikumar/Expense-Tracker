@@ -73,7 +73,11 @@ exports.getClaims = async (req, res, next) => {
     const claims = await Claim.find(baseQuery).sort({ createdAt: -1 }).skip(startIndex).limit(limit)
       .populate('user', 'name email')
       .populate('claimType', 'typeName')
-      .populate('status', 'statusName');
+      .populate('status', 'statusName')
+      .populate({
+        path: 'approvalHistory.approver',
+        select: 'name email'
+      });
 
     const totalPages = Math.ceil(total / limit);
     const pagination = {
@@ -152,7 +156,11 @@ exports.getMyClaims = async (req, res, next) => {
       .populate('user', 'name email')
       .populate('claimType', 'typeName')
       .populate('status', 'statusName')
-      .populate('approvalHistory.status', 'statusName');
+      .populate('approvalHistory.status', 'statusName')
+      .populate({
+        path: 'approvalHistory.approver',
+        select: 'name email'
+      });
 
     const totalPages = Math.ceil(total / limit);
     const pagination = {
@@ -187,13 +195,14 @@ exports.getMyClaims = async (req, res, next) => {
 // @access  Private/Approver
 exports.getClaimsForApprover = async (req, res, next) => {
   try {
-    const pendingStatus = await StatusMaster.findOne({ statusName: 'Pending' });
-    if (!pendingStatus) {
-      return res.status(500).json({ success: false, message: 'Pending status not found.' });
+    const pendingStatuses = await StatusMaster.find({ statusName: /^Pending/ });
+    if (!pendingStatuses || pendingStatuses.length === 0) {
+      return res.status(500).json({ success: false, message: 'Pending statuses not found.' });
     }
+    const pendingStatusIds = pendingStatuses.map(status => status._id);
     const claims = await Claim.find({
       "approvalHistory.approver": req.user.id,
-      "approvalHistory.status": pendingStatus._id,
+      "approvalHistory.status": { $in: pendingStatusIds },
     })
       .populate('user', 'name email')
       .populate('claimType', 'typeName')
@@ -224,7 +233,7 @@ exports.getClaim = async (req, res, next) => {
 // @access  Private
 exports.createClaim = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user.id).populate('role');
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
@@ -241,36 +250,47 @@ exports.createClaim = async (req, res, next) => {
     if (!approvalRule || approvalRule.approvers.length === 0) {
       return res.status(400).json({ success: false, message: 'No approval rule found for this claim type and amount.' });
     }
-    const pendingStatus = await StatusMaster.findOne({ statusName: 'Pending' });
-    if (!pendingStatus) {
-      return res.status(500).json({ success: false, message: 'Generic Pending status not found.' });
-    }
+
     let firstApprover;
-    const submitterRole = req.user.role;
+    const submitterRole = user.role;
     const submitterIndex = approvalRule.approvers.findIndex(
         a => a.approverId.toString() === submitterRole._id.toString()
     );
+
     if (submitterIndex > -1 && submitterIndex < approvalRule.approvers.length - 1) {
         firstApprover = approvalRule.approvers[submitterIndex + 1];
     } else {
         firstApprover = approvalRule.approvers[0];
     }
-    let statusId = pendingStatus._id;
-    const firstApproverRole = await RoleMaster.findById(firstApprover.approverId);
-    if (firstApproverRole) {
-      const newStatusName = `Pending: ${firstApproverRole.roleName}`;
-      const newStatus = await StatusMaster.findOne({ statusName: newStatusName });
-      if (newStatus) {
-        statusId = newStatus._id;
-      }
+
+    if (!firstApprover) {
+        return res.status(400).json({ success: false, message: 'Could not determine next approver.' });
     }
+
+    const firstApproverRole = await RoleMaster.findById(firstApprover.approverId);
+    if (!firstApproverRole) {
+        return res.status(400).json({ success: false, message: 'First approver role not found.' });
+    }
+
+    let newStatusName;
+    if (firstApproverRole.roleName === 'Admin/Finance Head') {
+      newStatusName = 'Pending: Finance Head';
+    } else {
+      newStatusName = `Pending: ${firstApproverRole.roleName}`;
+    }
+    const newStatus = await StatusMaster.findOne({ statusName: newStatusName });
+
+    if (!newStatus) {
+        return res.status(500).json({ success: false, message: `Status '${newStatusName}' not found.` });
+    }
+
     const claimData = {
       user: user._id,
       claimId: generateClaimId(),
       claimType: validClaimType._id,
       amount,
       description,
-      status: statusId,
+      status: newStatus._id,
       approvalHistory: [],
     };
     if (req.file) {
@@ -278,7 +298,7 @@ exports.createClaim = async (req, res, next) => {
     }
     claimData.approvalHistory.push({
       approver: firstApprover.approverId,
-      status: statusId,
+      status: newStatus._id,
     });
     const claim = await Claim.create(claimData);
     res.status(201).json({ success: true, data: claim });
@@ -293,35 +313,31 @@ exports.createClaim = async (req, res, next) => {
 // @access  Private
 exports.updateClaim = async (req, res, next) => {
   try {
-    let claim = await Claim.findById(req.params.id).populate('approvalHistory.status').populate('status');
+    let claim = await Claim.findById(req.params.id);
+
     if (!claim) {
       return res.status(404).json({ success: false });
     }
+
     if (claim.user.toString() !== req.user.id) {
       return res.status(401).json({ success: false, message: 'Not authorized to update this claim' });
     }
-    if (claim.status.statusName !== 'Returned') {
-        const hasBeenApproved = claim.approvalHistory.some(
-            (history) => history.status.statusName === 'Approved'
-        );
-        if (hasBeenApproved) {
-            return res.status(400).json({ success: false, message: 'Cannot edit a claim that is already in the approval process.' });
-        }
+
+    const { claimType, amount, description } = req.body;
+    let updatedData = { claimType, amount, description };
+
+    if (req.file) {
+      updatedData.attachments = [req.file.path];
     }
-    claim = await Claim.findByIdAndUpdate(req.params.id, req.body, {
+
+    claim = await Claim.findByIdAndUpdate(req.params.id, updatedData, {
       new: true,
       runValidators: true,
-    }).populate('claimType', 'typeName');
-
-    await Notification.create({
-      user: claim.user,
-      claim: claim._id,
-      message: `Your claim ${claim.claimId} has been updated.`,
     });
 
     res.status(200).json({ success: true, data: claim });
   } catch (err) {
-    res.status(400).json({ success: false });
+    res.status(400).json({ success: false, message: err.message });
   }
 };
 
@@ -381,7 +397,14 @@ exports.approveClaim = async (req, res, next) => {
     }
 
     // Update the current approver's history record to Approved
+    if (claim.approvalHistory.length === 0) {
+        return res.status(400).json({ success: false, message: 'This claim has no approval history.' });
+    }
     const currentHistory = claim.approvalHistory[claim.approvalHistory.length - 1];
+    if (!currentHistory) {
+        return res.status(400).json({ success: false, message: 'Could not find current approval history.' });
+    }
+
     if (currentHistory.approver.toString() !== req.user.role._id.toString()) {
         return res.status(401).json({ success: false, message: 'Not authorized to approve this claim at this stage' });
     }
@@ -392,17 +415,23 @@ exports.approveClaim = async (req, res, next) => {
     const nextApprover = approvalRule.approvers[currentApproverIndex + 1];
     if (nextApprover) {
       const nextApproverRole = await RoleMaster.findById(nextApprover.approverId);
-      const newStatusName = `Pending: ${nextApproverRole.roleName}`;
-      const newStatus = await StatusMaster.findOne({ statusName: newStatusName });
-      const pendingStatus = await StatusMaster.findOne({ statusName: 'Pending' });
-      if (newStatus) {
-        claim.status = newStatus._id;
-      } else {
-        claim.status = pendingStatus._id;
+      if (!nextApproverRole) {
+          return res.status(500).json({ success: false, message: 'Next approver role not found.' });
       }
+      let newStatusName;
+      if (nextApproverRole.roleName === 'Admin/Finance Head') {
+        newStatusName = 'Pending: Finance Head';
+      } else {
+        newStatusName = `Pending: ${nextApproverRole.roleName}`;
+      }
+      const newStatus = await StatusMaster.findOne({ statusName: newStatusName });
+      if (!newStatus) {
+        return res.status(500).json({ success: false, message: `Status '${newStatusName}' not found.` });
+      }
+      claim.status = newStatus._id;
       claim.approvalHistory.push({
         approver: nextApprover.approverId,
-        status: newStatus ? newStatus._id : pendingStatus._id,
+        status: newStatus._id,
       });
     } else {
       claim.status = approvedStatus._id;
@@ -415,8 +444,17 @@ exports.approveClaim = async (req, res, next) => {
       claim: claim._id,
       message: `Your claim ${claim.claimId} has been updated to ${finalStatus.statusName}.`,
     });
+
+    // Notification for the user who approved the claim
+    await Notification.create({
+        user: req.user.id,
+        claim: claim._id,
+        message: `You have approved claim ${claim.claimId}.`,
+    });
+
     res.status(200).json({ success: true, data: claim });
   } catch (err) {
+    console.error(err);
     res.status(400).json({ success: false, message: err.message });
   }
 };
@@ -445,6 +483,14 @@ exports.rejectClaim = async (req, res, next) => {
       claim: claim._id,
       message: `Your claim ${claim.claimId} has been Rejected.`,
     });
+
+    // Notification for the user who rejected the claim
+    await Notification.create({
+        user: req.user.id,
+        claim: claim._id,
+        message: `You have rejected claim ${claim.claimId}.`,
+    });
+
     res.status(200).json({ success: true, data: claim });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -475,6 +521,14 @@ exports.returnClaim = async (req, res, next) => {
       claim: claim._id,
       message: `Your claim ${claim.claimId} has been Returned for more information.`,
     });
+
+    // Notification for the user who returned the claim
+    await Notification.create({
+        user: req.user.id,
+        claim: claim._id,
+        message: `You have returned claim ${claim.claimId}.`,
+    });
+
     res.status(200).json({ success: true, data: claim });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });

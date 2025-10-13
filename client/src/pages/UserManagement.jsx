@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { getUsers, deleteUser, reset } from '../features/users/userSlice';
+import { getAllNotificationsForAdmin } from '../features/notifications/notificationSlice';
 import DashboardLayout from '../components/DashboardLayout';
 import Spinner from '../components/Spinner';
 import Pagination from '../components/Pagination';
@@ -20,9 +21,11 @@ function UserManagement() {
 
   const dispatch = useDispatch();
   const { users, pagination, isLoading, isError, message } = useSelector((state) => state.users);
+  const { notifications: adminNotifications } = useSelector((state) => state.notifications);
 
   useEffect(() => {
     dispatch(getUsers({ page: currentPage, limit: rowsPerPage, searchTerm }));
+    dispatch(getAllNotificationsForAdmin());
   }, [dispatch, currentPage, rowsPerPage, searchTerm]);
 
   const handlePageChange = (page) => {
@@ -63,6 +66,13 @@ function UserManagement() {
   if (isError) {
     return <h3>{message}</h3>;
   }
+
+  const userManagementNotifications = adminNotifications.filter(
+    (notification) =>
+      notification.action === 'user_created' ||
+      notification.action === 'user_updated' ||
+      notification.action === 'user_deleted'
+  );
 
   return (
     <DashboardLayout pageTitle="User Management">
@@ -130,6 +140,25 @@ function UserManagement() {
                 </select>
             </div>
             {pagination && <Pagination pagination={pagination} onPageChange={handlePageChange} />}
+        </div>
+      </div>
+
+      <div className="mt-8 bg-white p-8 rounded-lg shadow-md">
+        <h2 className="text-2xl font-bold mb-6">User Management Log</h2>
+        <div>
+          {userManagementNotifications.map((notification) => (
+            <div key={notification._id} className="flex items-center p-4 border-b hover:bg-gray-50">
+              <div className="flex-grow">
+                <p className="text-sm text-gray-800">{notification.message}</p>
+                <p className="text-xs text-gray-500">
+                  {new Date(notification.createdAt).toLocaleString()}
+                </p>
+              </div>
+              <div className="text-sm text-gray-600">
+                <p>Admin: {notification.admin.name}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </DashboardLayout>

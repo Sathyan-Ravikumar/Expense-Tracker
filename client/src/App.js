@@ -16,6 +16,8 @@ import NotificationsPage from './pages/NotificationsPage';
 import UserManagement from './pages/UserManagement';
 import { useSelector } from 'react-redux';
 
+import AuditLogsPage from './pages/AuditLogsPage';
+
 function App() {
   const { user } = useSelector((state) => state.auth);
 
@@ -35,6 +37,7 @@ function App() {
             <Route path="/admin/dashboard" element={<PrivateRoute roles={['Admin/Finance Head']}><AdminDashboard /></PrivateRoute>} />
             <Route path="/system-admin/dashboard" element={<PrivateRoute roles={['System Admin']}><SystemAdminDashboard /></PrivateRoute>} />
             <Route path="/admin/users" element={<PrivateRoute roles={['System Admin']}><UserManagement /></PrivateRoute>} />
+            <Route path="/admin/logs" element={<PrivateRoute roles={['System Admin']}><AuditLogsPage /></PrivateRoute>} />
           </Route>
           <Route path="/" element={<Home />} />
         </Routes>

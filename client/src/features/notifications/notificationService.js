@@ -14,6 +14,18 @@ const getNotifications = async (token) => {
   return response.data.data;
 };
 
+// Get all notifications for admin
+const getAllNotifications = async (token) => {
+  const config = {
+    headers: {
+      'x-auth-token': token,
+    },
+  };
+
+  const response = await axios.get('http://localhost:5000/api/notifications/all', config);
+  return response.data.data;
+};
+
 // Mark all as read
 const markAllAsRead = async (token) => {
     const config = {
@@ -28,6 +40,7 @@ const markAllAsRead = async (token) => {
 
 const notificationService = {
   getNotifications,
+  getAllNotifications,
   markAllAsRead,
 };
 

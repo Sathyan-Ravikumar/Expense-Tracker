@@ -15,6 +15,22 @@ exports.getNotifications = async (req, res, next) => {
   }
 };
 
+// @desc    Get all notifications
+// @route   GET /api/notifications/all
+// @access  Private/System Admin
+exports.getAllNotifications = async (req, res, next) => {
+  try {
+    const notifications = await Notification.find({})
+      .sort({ createdAt: -1 })
+      .populate('user', 'name')
+      .populate('claim', 'claimId');
+
+    res.status(200).json({ success: true, data: notifications });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
 // @desc    Mark a notification as read
 // @route   PUT /api/notifications/:id/read
 // @access  Private

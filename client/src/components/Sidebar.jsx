@@ -38,7 +38,7 @@ const Sidebar = () => {
         </button>
       </div>
       <nav className="flex-grow mt-8 space-y-2">
-        {user && user.role && user.role.roleName !== 'System Admin' && (
+        {user && user.role && user.role.roleName !== 'System Admin' && user.role.roleName !== 'Admin/Finance Head' && (
           <>
             <NavLink to="/dashboard" icon={<FaTachometerAlt className="mr-3" />}>My Claims</NavLink>
             <NavLink to="/apply-claim" icon={<FaPlus className="mr-3" />}>Apply Claim</NavLink>

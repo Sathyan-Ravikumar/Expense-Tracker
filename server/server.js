@@ -30,6 +30,7 @@ app.use('/api/approval-rules', require('./routes/approvalRules'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/roles', require('./routes/roles'));
 app.use('/api/system-admin-notifications', require('./routes/systemAdminNotifications'));
+app.use('/api/reports', require('./routes/reports'));
 
 const PORT = process.env.PORT || 5000;
 

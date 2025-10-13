@@ -13,6 +13,7 @@ import StatCard from '../components/StatCard';
 import ClaimsAccordion from '../components/ClaimsAccordion';
 import Pagination from '../components/Pagination';
 import FilterPanel from '../components/FilterPanel';
+import ReportModal from '../components/ReportModal';
 
 function AdminDashboard() {
   const [showReturnModal, setShowReturnModal] = useState(false);
@@ -23,6 +24,7 @@ function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('Pending');
   const [currentPage, setCurrentPage] = useState(1);
   const [activeFilters, setActiveFilters] = useState({ claimType: '', minAmount: '', maxAmount: '', startDate: '', endDate: '', searchTerm: '' });
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -116,7 +118,7 @@ function AdminDashboard() {
   const pendingClaims = filteredClaims.filter(c => c.status?.statusName?.startsWith('Pending'));
   const approvedClaims = filteredClaims.filter(c => c.status?.statusName === 'Approved');
   const rejectedClaims = filteredClaims.filter(c => c.status?.statusName === 'Rejected' || c.status?.statusName === 'Returned');
-  const pendingClaimsForHead = pendingClaims.filter(c => c.status?.statusName === 'Pending: Admin/Finance Head');
+  const pendingClaimsForHead = pendingClaims.filter(c => c.status?.statusName === 'Pending: Finance Head');
 
   const displayedClaims = () => {
     switch (activeTab) {
@@ -158,7 +160,7 @@ function AdminDashboard() {
   );
 
   const renderActions = (claim) => {
-    const isActionable = claim.status?.statusName === 'Pending: Admin/Finance Head' && user.role?.roleName === 'Admin/Finance Head';
+    const isActionable = claim.status?.statusName === 'Pending: Finance Head' && user.role?.roleName === 'Admin/Finance Head';
     if (isActionable) {
         return (
             <>
@@ -191,6 +193,7 @@ function AdminDashboard() {
         message="Are you sure you want to approve this claim?"
         confirmButtonClass="bg-green-500 hover:bg-green-600"
       />
+      <ReportModal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} />
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
         <StatCard icon={<FaFileInvoiceDollar className="text-4xl text-blue-500 mr-4" />} title="Total Claims in System" value={pagination?.total || claims.length} />
@@ -208,6 +211,7 @@ function AdminDashboard() {
             </nav>
         </div>
         <div className="flex items-center space-x-4">
+            <button onClick={() => setIsReportModalOpen(true)} className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600">Generate Report</button>
             <div className="relative">
               <input
                   type="text"

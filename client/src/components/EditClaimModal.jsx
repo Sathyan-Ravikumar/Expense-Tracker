@@ -2,15 +2,16 @@ import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import Spinner from './Spinner';
 import claimTypeService from '../features/claimTypes/claimTypeService';
+import axios from 'axios';
 
 function EditClaimModal({ isOpen, claimId, onClose }) {
-  const [formData, setFormData] = useState({ claimType: '', amount: '', description: '' });
+  const [formData, setFormData] = useState({ claimType: '', amount: '', description: '', attachment: null });
   const [file, setFile] = useState(null);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [claimTypes, setClaimTypes] = useState([]);
 
-  const { claimType, amount, description } = formData;
+  const { claimType, amount, description, attachment } = formData;
 
   useEffect(() => {
     const fetchClaimTypes = async () => {
@@ -26,16 +27,21 @@ function EditClaimModal({ isOpen, claimId, onClose }) {
 
   useEffect(() => {
     if (isOpen && claimId) {
-      setIsLoading(true);
-      // Mock fetching claim data
       const fetchClaim = async () => {
-        // In a real app, you'd fetch this from an API
-        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-        setFormData({
-          claimType: '1', // Mocked data
-          amount: '100', // Mocked data
-          description: 'This is a mock description for the claim.', // Mocked data
-        });
+        setIsLoading(true);
+        try {
+            const token = localStorage.getItem('accessToken');
+            const config = {
+                headers: {
+                'x-auth-token': token,
+                },
+            };
+            const response = await axios.get(`http://localhost:5000/api/claims/${claimId}`, config);
+            const { claimType, amount, description, attachments } = response.data.data;
+            setFormData({ claimType: claimType._id, amount, description, attachment: attachments.length > 0 ? attachments[0] : null });
+        } catch (error) {
+            toast.error('Failed to fetch claim data.');
+        }
         setIsLoading(false);
       };
       fetchClaim();
@@ -68,10 +74,30 @@ function EditClaimModal({ isOpen, claimId, onClose }) {
       return;
     }
 
-    // The submission logic is removed as per the user's request to focus on the UI.
-    console.log("Form submitted with data:", { ...formData, file });
-    toast.success('Form submitted (mocked). Check the console for data.');
-    onClose();
+    setIsLoading(true);
+    try {
+        const token = localStorage.getItem('accessToken');
+        const config = {
+            headers: {
+                'x-auth-token': token,
+                'Content-Type': 'multipart/form-data',
+            },
+        };
+        const claimData = new FormData();
+        claimData.append('claimType', claimType);
+        claimData.append('amount', amount);
+        claimData.append('description', description);
+        if (file) {
+            claimData.append('attachment', file);
+        }
+
+        await axios.put(`http://localhost:5000/api/claims/${claimId}`, claimData, config);
+        toast.success('Claim updated successfully!');
+        onClose();
+    } catch (error) {
+        toast.error('Failed to update claim.');
+    }
+    setIsLoading(false);
   };
 
   if (!isOpen) {
@@ -106,7 +132,8 @@ function EditClaimModal({ isOpen, claimId, onClose }) {
                     {errors.description && <p className="text-red-500 text-xs mt-1">{errors.description}</p>}
                 </div>
                 <div className="mb-6">
-                    <label htmlFor="attachment" className="block text-gray-700 font-semibold mb-2">Attachment (Optional)</label>
+                    <label htmlFor="attachment" className="block text-gray-700 font-semibold mb-2">Attachment</label>
+                    {attachment && <div className="mb-2"><a href={`http://localhost:5000/${attachment}`} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-900 font-semibold">View Current Attachment</a></div>}
                     <input type="file" id="attachment" name="attachment" onChange={onFileChange} className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.attachment ? 'border-red-500' : 'border-gray-300'}`} />
                     {errors.attachment && <p className="text-red-500 text-sm mt-1">{errors.attachment}</p>}
                 </div>

@@ -26,13 +26,16 @@ exports.register = async (req, res, next) => {
     });
 
     // Create a notification for the System Admin
-    const systemAdmin = await User.findOne({ role: 'System Admin' });
-    if (systemAdmin) {
-      await SystemAdminNotification.create({
-        admin: systemAdmin._id,
-        action: 'user_created',
-        affectedUser: user._id,
-      });
+    const systemAdminRole = await RoleMaster.findOne({ roleName: 'System Admin' });
+    if (systemAdminRole) {
+        const systemAdmin = await User.findOne({ role: systemAdminRole._id });
+        if (systemAdmin) {
+          await SystemAdminNotification.create({
+            admin: systemAdmin._id,
+            action: 'user_created',
+            affectedUser: user._id,
+          });
+        }
     }
 
     // Populate the role field before sending the token response

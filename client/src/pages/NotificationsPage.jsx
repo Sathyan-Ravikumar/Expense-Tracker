@@ -5,13 +5,16 @@ import { getSystemAdminNotifications, markAllAsRead as markAllSystemAdminAsRead 
 import DashboardLayout from '../components/DashboardLayout';
 import Spinner from '../components/Spinner';
 import { toast } from 'react-hot-toast';
+import Pagination from '../components/Pagination';
 
 function NotificationsPage() {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const { notifications, isLoading, isError, message } = useSelector((state) => state.notifications);
   const { notifications: systemAdminNotifications, isLoading: systemAdminIsLoading, isError: systemAdminIsError, message: systemAdminMessage } = useSelector((state) => state.systemAdminNotifications);
-  const [activeTab, setActiveTab] = useState('user');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const isSystemAdmin = user && user.role.roleName === 'System Admin';
 
   useEffect(() => {
     if (isError) {
@@ -23,51 +26,51 @@ function NotificationsPage() {
   }, [isError, message, systemAdminIsError, systemAdminMessage]);
 
   useEffect(() => {
-    if (user && user.role.roleName === 'System Admin') {
+    if (isSystemAdmin) {
       dispatch(getSystemAdminNotifications());
+    } else {
+      dispatch(getNotifications());
     }
-    dispatch(getNotifications());
-  }, [dispatch, user]);
+  }, [dispatch, isSystemAdmin]);
 
   const handleMarkAllRead = () => {
-    if (activeTab === 'user') {
-      dispatch(markAllAsRead());
-      toast.success('All user notifications marked as read.');
-    } else {
+    if (isSystemAdmin) {
       dispatch(markAllSystemAdminAsRead());
       toast.success('All system admin notifications marked as read.');
+    } else {
+      dispatch(markAllAsRead());
+      toast.success('All user notifications marked as read.');
     }
   };
 
-  const unreadCount = activeTab === 'user' ? notifications.filter(n => !n.isRead).length : systemAdminNotifications.filter(n => !n.isRead).length;
-  const currentNotifications = activeTab === 'user' ? notifications : systemAdminNotifications;
-  const currentIsLoading = activeTab === 'user' ? isLoading : systemAdminIsLoading;
+  const currentNotifications = isSystemAdmin ? systemAdminNotifications : notifications;
+  const currentIsLoading = isSystemAdmin ? systemAdminIsLoading : isLoading;
+  const unreadCount = currentNotifications.filter(n => !n.isRead).length;
+
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(currentNotifications.length / itemsPerPage);
+  const paginatedNotifications = currentNotifications.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
 
   return (
     <DashboardLayout pageTitle="Notifications">
-      {user && user.role.roleName === 'System Admin' && (
-        <div className="mb-4 border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-            <button onClick={() => setActiveTab('user')} className={`py-2 px-4 text-sm font-medium transition-colors duration-200 ${activeTab === 'user' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>
-              User Notifications
-            </button>
-            <button onClick={() => setActiveTab('admin')} className={`py-2 px-4 text-sm font-medium transition-colors duration-200 ${activeTab === 'admin' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>
-              System Admin Notifications
-            </button>
-          </nav>
-        </div>
-      )}
       {currentIsLoading && currentNotifications.length === 0 ? <Spinner /> : (
         <div className="bg-white rounded-lg shadow-md">
             <div className="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-lg">
-                <h2 className="text-xl font-bold text-gray-800">Your Notifications</h2>
+                <h2 className="text-xl font-bold text-gray-800">{isSystemAdmin ? 'System Admin Notifications' : 'Your Notifications'}</h2>
                 {unreadCount > 0 && (
                     <button onClick={handleMarkAllRead} className="text-sm text-blue-500 hover:underline font-semibold">Mark all as read</button>
                 )}
             </div>
             <div className="divide-y divide-gray-200">
-                {currentNotifications && currentNotifications.length > 0 ? (
-                    currentNotifications.map((notification) => (
+                {paginatedNotifications && paginatedNotifications.length > 0 ? (
+                    paginatedNotifications.map((notification) => (
                         <div key={notification._id} className={`p-4 ${!notification.isRead ? 'bg-blue-50' : 'bg-white'}`}>
                         <p className="text-sm text-gray-800">{notification.message}</p>
                         <p className="text-xs text-gray-500 mt-1">
@@ -81,6 +84,17 @@ function NotificationsPage() {
             </div>
         </div>
       )}
+      <Pagination
+        pagination={{
+          page: currentPage,
+          limit: itemsPerPage,
+          total: currentNotifications.length,
+          totalPages: totalPages,
+          next: currentPage < totalPages ? { page: currentPage + 1, limit: itemsPerPage } : null,
+          prev: currentPage > 1 ? { page: currentPage - 1, limit: itemsPerPage } : null,
+        }}
+        onPageChange={handlePageChange}
+      />
     </DashboardLayout>
   );
 }
