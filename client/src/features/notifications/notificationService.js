@@ -10,7 +10,7 @@ const getNotifications = async (token) => {
     },
   };
 
-  const response = await axios.get(API_URL, config);
+  const response = await axios.get('http://localhost:5000/api/notifications/', config);
   return response.data.data;
 };
 
@@ -22,7 +22,7 @@ const markAllAsRead = async (token) => {
         },
       };
     
-      const response = await axios.put(API_URL + 'readall', {}, config);
+      const response = await axios.put('http://localhost:5000/api/notifications/readall', {}, config);
       return response.data;
 }
 

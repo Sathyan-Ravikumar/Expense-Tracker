@@ -1,42 +1,41 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api/claims/';
-
 // Create new claim
 const createClaim = async (claimData, token) => {
-  console.log(API_URL);
   const config = {
     headers: {
       'x-auth-token': token,
     },
   };
 
-  const response = await axios.post(API_URL, claimData, config);
+  const response = await axios.post('http://localhost:5000/api/claims/', claimData, config);
   return response.data;
 };
 
 // Get all claims for reviewer
-const getClaims = async (token) => {
+const getClaims = async (token, { page = 1, limit = 10, claimType = '', minAmount = '', maxAmount = '', startDate = '', endDate = '', searchTerm = '' }) => {
   const config = {
     headers: {
       'x-auth-token': token,
     },
+    params: { page, limit, claimType, minAmount, maxAmount, startDate, endDate, searchTerm },
   };
 
-  const response = await axios.get(API_URL, config);
-  return response.data.data;
+  const response = await axios.get('http://localhost:5000/api/claims/', config);
+  return response.data;
 };
 
 // Get user claims
-const getMyClaims = async (token) => {
+const getMyClaims = async (token, { page = 1, limit = 10, claimType = '', minAmount = '', maxAmount = '', startDate = '', endDate = '', searchTerm = '' }) => {
   const config = {
     headers: {
       'x-auth-token': token,
     },
+    params: { page, limit, claimType, minAmount, maxAmount, startDate, endDate, searchTerm },
   };
 
-  const response = await axios.get(API_URL + 'my', config);
-  return response.data.data;
+  const response = await axios.get('http://localhost:5000/api/claims/my', config);
+  return response.data;
 };
 
 // Get single claim
@@ -47,7 +46,7 @@ const getClaim = async (claimId, token) => {
     },
   };
 
-  const response = await axios.get(API_URL + claimId, config);
+  const response = await axios.get(`http://localhost:5000/api/claims/${claimId}`, config);
   return response.data.data;
 };
 
@@ -59,8 +58,8 @@ const updateClaim = async (claimId, claimData, token) => {
     },
   };
 
-  const response = await axios.put(API_URL + claimId, claimData, config);
-  return response.data.data;
+  const response = await axios.put(`http://localhost:5000/api/claims/${claimId}`, claimData, config);
+  return response.data;
 };
 
 // Delete user claim
@@ -71,7 +70,7 @@ const deleteClaim = async (claimId, token) => {
     },
   };
 
-  const response = await axios.delete(API_URL + claimId, config);
+  const response = await axios.delete(`http://localhost:5000/api/claims/${claimId}`, config);
   return response.data;
 };
 
@@ -83,7 +82,7 @@ const reimburseClaim = async (claimId, token) => {
     },
   };
 
-  const response = await axios.put(API_URL + claimId + '/reimburse', {}, config);
+  const response = await axios.put(`http://localhost:5000/api/claims/${claimId}/reimburse`, {}, config);
   return response.data;
 };
 
@@ -95,7 +94,7 @@ const approveClaim = async (claimId, token) => {
     },
   };
 
-  const response = await axios.put(API_URL + claimId + '/approve', {}, config);
+  const response = await axios.put(`http://localhost:5000/api/claims/${claimId}/approve`, {}, config);
   return response.data;
 };
 
@@ -107,7 +106,7 @@ const rejectClaim = async (claimId, remarks, token) => {
     },
   };
 
-  const response = await axios.put(API_URL + claimId + '/reject', { remarks }, config);
+  const response = await axios.put(`http://localhost:5000/api/claims/${claimId}/reject`, { remarks }, config);
   return response.data;
 };
 
@@ -119,7 +118,7 @@ const returnClaim = async (claimId, remarks, token) => {
     },
   };
 
-  const response = await axios.put(API_URL + claimId + '/return', { remarks }, config);
+  const response = await axios.put(`http://localhost:5000/api/claims/${claimId}/return`, { remarks }, config);
   return response.data;
 };
 
@@ -127,6 +126,8 @@ const claimService = {
   createClaim,
   getClaims,
   getMyClaims,
+  getClaim,
+  updateClaim,
   deleteClaim,
   reimburseClaim,
   approveClaim,

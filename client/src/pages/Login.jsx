@@ -4,7 +4,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { login, reset } from '../features/auth/authSlice';
 import Spinner from '../components/Spinner';
-import { FaSignInAlt } from 'react-icons/fa';
 
 function Login() {
   const [formData, setFormData] = useState({
@@ -31,7 +30,10 @@ function Login() {
       navigate('/');
     }
 
-    dispatch(reset());
+    // Reset the auth state flags when the component unmounts
+    return () => {
+      dispatch(reset());
+    }
   }, [user, isError, isSuccess, message, navigate, dispatch]);
 
   const onChange = (e) => {

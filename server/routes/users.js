@@ -5,8 +5,11 @@ const {
   getUser,
   updateUser,
   deleteUser,
+  getRoles,
 } = require('../controllers/userController');
 const { protect, authorize } = require('../middleware/authMiddleware');
+
+router.route('/roles').get(protect, authorize('System Admin'), getRoles);
 
 router
   .route('/')

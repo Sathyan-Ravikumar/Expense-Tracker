@@ -4,6 +4,7 @@ import claimService from './claimService';
 const initialState = {
   claims: [],
   claim: {},
+  pagination: null,
   isError: false,
   isSuccess: false,
   isLoading: false,
@@ -32,10 +33,10 @@ export const createClaim = createAsyncThunk(
 // Get user claims
 export const getMyClaims = createAsyncThunk(
   'claims/getMy',
-  async (_, thunkAPI) => {
+  async (filters = {}, thunkAPI) => {
     try {
       const token = thunkAPI.getState().auth.accessToken;
-      return await claimService.getMyClaims(token);
+      return await claimService.getMyClaims(token, filters);
     } catch (error) {
       const message =
         (error.response &&
@@ -51,10 +52,10 @@ export const getMyClaims = createAsyncThunk(
 // Get all claims for reviewer
 export const getClaims = createAsyncThunk(
   'claims/getAll',
-  async (_, thunkAPI) => {
+  async (filters = {}, thunkAPI) => {
     try {
       const token = thunkAPI.getState().auth.accessToken;
-      return await claimService.getClaims(token);
+      return await claimService.getClaims(token, filters);
     } catch (error) {
       const message =
         (error.response &&
@@ -233,7 +234,8 @@ export const claimSlice = createSlice({
       .addCase(getClaims.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.claims = action.payload;
+        state.claims = action.payload.data;
+        state.pagination = action.payload.pagination;
       })
       .addCase(getClaims.rejected, (state, action) => {
         state.isLoading = false;
@@ -246,7 +248,8 @@ export const claimSlice = createSlice({
       .addCase(getMyClaims.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.claims = action.payload;
+        state.claims = action.payload.data;
+        state.pagination = action.payload.pagination;
       })
       .addCase(getMyClaims.rejected, (state, action) => {
         state.isLoading = false;
@@ -273,10 +276,10 @@ export const claimSlice = createSlice({
         state.isLoading = false;
         state.isSuccess = true;
         const index = state.claims.findIndex(
-          (claim) => claim._id === action.payload._id
+          (claim) => claim._id === action.payload.data._id
         );
         if (index !== -1) {
-          state.claims[index] = action.payload;
+          state.claims[index] = action.payload.data;
         }
       })
       .addCase(updateClaim.rejected, (state, action) => {
@@ -287,13 +290,11 @@ export const claimSlice = createSlice({
       .addCase(deleteClaim.pending, (state) => {
         state.isLoading = true;
       })
-      .addCase(deleteClaim.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.isSuccess = true;
-        state.claims = state.claims.filter(
-          (claim) => claim._id !== action.payload.id
-        );
-      })
+    .addCase(deleteClaim.fulfilled, (state, action) => {
+      state.isLoading = false;
+      // The id of the deleted claim is in action.meta.arg
+      state.claims = state.claims.filter((claim) => claim._id !== action.meta.arg);
+    })
       .addCase(deleteClaim.rejected, (state, action) => {
         state.isLoading = false;
         state.isError = true;

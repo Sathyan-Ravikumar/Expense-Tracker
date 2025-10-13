@@ -87,6 +87,18 @@
       "description": "Claim submitted, waiting for first-level approval"
     },
     {
+      "name": "Pending: Manager",
+      "description": "Claim is waiting for approval from the Manager"
+    },
+    {
+      "name": "Pending: Finance Officer",
+      "description": "Claim is waiting for approval from the Finance Officer"
+    },
+    {
+      "name": "Pending: Finance Head",
+      "description": "Claim is waiting for approval from the Admin/Finance Head"
+    },
+    {
       "name": "Approved",
       "description": "Claim has been approved at all required levels"
     },

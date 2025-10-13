@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const RoleMaster = require('../models/RoleMaster');
 const jwt = require('jsonwebtoken');
+const SystemAdminNotification = require('../models/SystemAdminNotification');
 
 
 // @desc    Register a new user
@@ -23,6 +24,16 @@ exports.register = async (req, res, next) => {
       password,
       role: employeeRole._id,
     });
+
+    // Create a notification for the System Admin
+    const systemAdmin = await User.findOne({ role: 'System Admin' });
+    if (systemAdmin) {
+      await SystemAdminNotification.create({
+        admin: systemAdmin._id,
+        action: 'user_created',
+        affectedUser: user._id,
+      });
+    }
 
     // Populate the role field before sending the token response
     await user.populate('role');
