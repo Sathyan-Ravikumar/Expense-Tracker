@@ -13,8 +13,21 @@ const getSystemAdminNotifications = async (token) => {
   return response.data;
 };
 
+// Mark all as read
+const markAllAsRead = async (token) => {
+    const config = {
+        headers: {
+          'x-auth-token': token,
+        },
+      };
+    
+      const response = await axios.put(API_URL + 'readall', {}, config);
+      return response.data;
+}
+
 const systemAdminNotificationService = {
   getSystemAdminNotifications,
+  markAllAsRead,
 };
 
 export default systemAdminNotificationService;

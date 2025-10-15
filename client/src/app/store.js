@@ -6,17 +6,18 @@ import notificationReducer from '../features/notifications/notificationSlice';
 import approvalRuleReducer from '../features/approvalRules/approvalRuleSlice';
 import userReducer from '../features/users/userSlice';
 import roleReducer from '../features/roles/roleSlice';
-import systemAdminNotificationReducer from '../features/notifications/systemAdminNotificationSlice';
+
+import systemAdminNotificationsReducer from '../features/notifications/systemAdminNotificationSlice';
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     claims: claimReducer,
     claimTypes: claimTypeReducer,
-    notifications: notificationReducer,
     approvalRules: approvalRuleReducer,
-    users: userReducer,
+    notifications: notificationReducer,
+    systemAdminNotifications: systemAdminNotificationsReducer,
     roles: roleReducer,
-    systemAdminNotifications: systemAdminNotificationReducer,
+    users: userReducer,
   },
 });

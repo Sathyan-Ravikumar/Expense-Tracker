@@ -1,10 +1,10 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import Spinner from '../components/Spinner';
-import { getClaims, reset, approveClaim, reimburseClaim } from '../features/claims/claimSlice';
+import { getClaims, reset, approveClaim, returnClaim, rejectClaim } from '../features/claims/claimSlice';
 import { toast } from 'react-hot-toast';
-import { FaFileInvoiceDollar, FaClock, FaCheck, FaTimes, FaUndo, FaMoneyBillWave, FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
+import { FaFileInvoiceDollar, FaClock, FaCheck, FaTimes, FaUndo, FaCheckCircle, FaTimesCircle, FaHourglassHalf } from 'react-icons/fa';
 import ReturnClaimModal from '../components/ReturnClaimModal';
 import RejectClaimModal from '../components/RejectClaimModal';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -76,11 +76,6 @@ function FinanceDashboard() {
     setShowReturnModal(true);
   };
 
-  const handleReimburse = (claimId) => {
-    dispatch(reimburseClaim(claimId));
-    toast.success('Claim marked as reimbursed.');
-  };
-
   const handlePageChange = (page) => {
     setCurrentPage(page);
   };
@@ -105,11 +100,7 @@ function FinanceDashboard() {
     setSelectedClaimId(null);
   };
 
-  if (isLoading) {
-    return <Spinner />;
-  }
-
-  const filteredClaims = claims.filter(claim => {
+  const filteredClaims = useMemo(() => claims.filter(claim => {
     if (searchTerm === '') {
       return claim;
     } else if (
@@ -118,20 +109,17 @@ function FinanceDashboard() {
     ) {
       return claim;
     }
-  });
+  }), [claims, searchTerm]);
 
-  const pendingClaims = filteredClaims.filter(c => c.status?.statusName?.startsWith('Pending'));
-  const approvedClaims = filteredClaims.filter(c => c.status?.statusName === 'Approved');
-  const rejectedClaims = filteredClaims.filter(c => c.status?.statusName === 'Rejected' || c.status?.statusName === 'Returned');
-  const claimsToReimburse = approvedClaims.filter(c => !c.reimbursed);
-  const pendingClaimsForOfficer = pendingClaims.filter(c => c.status?.statusName === 'Pending: Finance Officer');
+  const pendingClaims = useMemo(() => filteredClaims.filter(c => c.status?.statusName?.startsWith('Pending')), [filteredClaims]);
+  const approvedClaims = useMemo(() => filteredClaims.filter(c => c.status?.statusName === 'Approved'), [filteredClaims]);
+  const rejectedClaims = useMemo(() => filteredClaims.filter(c => c.status?.statusName === 'Rejected' || c.status?.statusName === 'Returned'), [filteredClaims]);
+  const pendingClaimsForOfficer = useMemo(() => pendingClaims.filter(c => c.status?.statusName === 'Pending: Finance Officer'), [pendingClaims]);
 
-  const displayedClaims = () => {
+  const displayedClaims = useMemo(() => {
     switch (activeTab) {
       case 'Pending':
         return pendingClaims;
-      case 'Ready to Reimburse':
-        return claimsToReimburse;
       case 'Approved':
         return approvedClaims;
       case 'Rejected':
@@ -139,7 +127,11 @@ function FinanceDashboard() {
       default:
         return [];
     }
-  };
+  }, [activeTab, pendingClaims, approvedClaims, rejectedClaims]);
+
+  if (isLoading) {
+    return <Spinner />;
+  }
 
   const renderHeader = () => (
     <>
@@ -169,8 +161,6 @@ function FinanceDashboard() {
 
   const renderActions = (claim) => {
     const isActionableForApproval = claim.status?.statusName === 'Pending: Finance Officer' && user.role?.roleName === 'Finance Officer';
-    const isActionableForReimbursement = claim.status?.statusName === 'Approved' && !claim.reimbursed && user.role?.roleName === 'Finance Officer';
-
     if (isActionableForApproval) {
         return (
             <div className="flex items-center space-x-4">
@@ -178,10 +168,6 @@ function FinanceDashboard() {
                 <button onClick={() => handleReject(claim._id)} className="text-red-600 hover:text-red-900" title="Reject"><FaTimes /></button>
                 <button onClick={() => handleReturn(claim._id)} className="text-yellow-600 hover:text-yellow-900" title="Return"><FaUndo /></button>
             </div>
-        );
-    } else if (isActionableForReimbursement) {
-        return (
-            <button onClick={() => handleReimburse(claim._id)} className="text-green-600 hover:text-green-900" title="Reimburse"><FaMoneyBillWave /></button>
         );
     }
     return null;
@@ -210,17 +196,16 @@ function FinanceDashboard() {
       <ReportModal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+        <StatCard icon={<FaFileInvoiceDollar className="text-4xl text-blue-500 mr-4" />} title="Total Claims to Review" value={pagination?.total || claims.length} />
         <StatCard icon={<FaClock className="text-4xl text-yellow-500 mr-4" />} title="Pending Your Approval" value={pendingClaimsForOfficer.length} />
-        <StatCard icon={<FaFileInvoiceDollar className="text-4xl text-blue-500 mr-4" />} title="Ready to Reimburse" value={claimsToReimburse.length} />
         <StatCard icon={<FaCheckCircle className="text-4xl text-green-500 mr-4" />} title="Total Approved" value={approvedClaims.length} />
         <StatCard icon={<FaTimesCircle className="text-4xl text-red-500 mr-4" />} title="Total Rejected" value={rejectedClaims.length} />
       </div>
-
+      
       <div className="flex justify-between items-center mb-4">
         <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8" aria-label="Tabs">
                 <TabButton tabName="Pending" list={pendingClaims} />
-                <TabButton tabName="Ready to Reimburse" list={claimsToReimburse} />
                 <TabButton tabName="Approved" list={approvedClaims} />
                 <TabButton tabName="Rejected" list={rejectedClaims} />
             </nav>
@@ -230,7 +215,7 @@ function FinanceDashboard() {
             <div className="relative">
               <input
                   type="text"
-                  placeholder="&#xF002; Search by employee or claim ID"
+                  placeholder="Search by employee or claim ID"
                   value={searchTerm}
                   onChange={(e) => handleSearch(e.target.value)}
                   className="border rounded-lg px-4 py-2 pl-10"
@@ -241,7 +226,7 @@ function FinanceDashboard() {
       </div>
 
       <ClaimsAccordion
-        claims={displayedClaims()}
+        claims={displayedClaims}
         headerRenderer={renderHeader}
         rowRenderer={renderRow}
         actionsRenderer={renderActions}

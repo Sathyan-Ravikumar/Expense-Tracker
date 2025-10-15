@@ -1,8 +1,7 @@
 const User = require('../models/User');
 const RoleMaster = require('../models/RoleMaster');
 const jwt = require('jsonwebtoken');
-const SystemAdminNotification = require('../models/SystemAdminNotification');
-
+const sendEmail = require('../utils/email');
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
@@ -36,6 +35,19 @@ exports.register = async (req, res, next) => {
             affectedUser: user._id,
           });
         }
+    }
+
+    // Send welcome email to the new user
+    try {
+        const emailMessage = `Welcome to Expense Tracker, ${user.name}! Your account has been created successfully.`;
+        await sendEmail({
+            email: user.email,
+            subject: 'Welcome to Expense Tracker!',
+            message: emailMessage,
+            html: `<p>${emailMessage}</p>`,
+        });
+    } catch (err) {
+        console.error('There was an error sending the email. ', err);
     }
 
     // Populate the role field before sending the token response
@@ -81,7 +93,7 @@ const sendTokenResponse = (user, statusCode, res) => {
   const accessToken = jwt.sign(
     { id: user._id, role: user.role.roleName, department: user.department },
     process.env.JWT_SECRET,
-    { expiresIn: '15m' }
+    { expiresIn: '1h' }
   );
 
   // Create refresh token

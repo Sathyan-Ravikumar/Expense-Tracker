@@ -8,6 +8,9 @@ const PrivateRoute = ({ children, roles }) => {
     return <Navigate to="/login" />;
   }
 
+  console.log('User role:', user?.role?.roleName);
+  console.log('Allowed roles:', roles);
+
   if (roles && !roles.includes(user.role.roleName)) {
     return <Navigate to="/dashboard" />;
   }

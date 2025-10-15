@@ -20,3 +20,16 @@ exports.getSystemAdminNotifications = async (req, res, next) => {
     res.status(400).json({ success: false, message: err.message });
   }
 };
+
+// @desc    Mark all system admin notifications as read
+// @route   PUT /api/system-admin-notifications/readall
+// @access  Private/System Admin
+exports.markAllAsRead = async (req, res, next) => {
+    try {
+      await SystemAdminNotification.updateMany({ admin: req.user.id, isRead: false }, { isRead: true });
+  
+      res.status(200).json({ success: true, data: {} });
+    } catch (err) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  };

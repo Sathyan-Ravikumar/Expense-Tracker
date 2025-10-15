@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import Spinner from '../components/Spinner';
@@ -100,11 +100,7 @@ function ManagerDashboard() {
     setSelectedClaimId(null);
   };
 
-  if (isLoading && !claims.length) {
-    return <Spinner />;
-  }
-
-  const filteredClaims = claims.filter(claim => {
+  const filteredClaims = useMemo(() => claims.filter(claim => {
     if (searchTerm === '') {
       return claim;
     } else if (
@@ -113,13 +109,13 @@ function ManagerDashboard() {
     ) {
       return claim;
     }
-  });
+  }), [claims, searchTerm]);
 
-  const pendingClaims = filteredClaims.filter(c => c.status?.statusName?.startsWith('Pending'));
-  const approvedClaims = filteredClaims.filter(c => c.status?.statusName === 'Approved');
-  const rejectedClaims = filteredClaims.filter(c => c.status?.statusName === 'Rejected' || c.status?.statusName === 'Returned');
+  const pendingClaims = useMemo(() => filteredClaims.filter(c => c.status?.statusName?.startsWith('Pending')), [filteredClaims]);
+  const approvedClaims = useMemo(() => filteredClaims.filter(c => c.status?.statusName === 'Approved'), [filteredClaims]);
+  const rejectedClaims = useMemo(() => filteredClaims.filter(c => c.status?.statusName === 'Rejected' || c.status?.statusName === 'Returned'), [filteredClaims]);
 
-  const displayedClaims = () => {
+  const displayedClaims = useMemo(() => {
     switch (activeTab) {
       case 'Pending':
         return pendingClaims;
@@ -130,7 +126,11 @@ function ManagerDashboard() {
       default:
         return [];
     }
-  };
+  }, [activeTab, pendingClaims, approvedClaims, rejectedClaims]);
+
+  if (isLoading && !claims.length) {
+    return <Spinner />;
+  }
 
   const renderHeader = () => (
     <>
@@ -225,7 +225,7 @@ function ManagerDashboard() {
       </div>
 
       <ClaimsAccordion
-        claims={displayedClaims()}
+        claims={displayedClaims}
         headerRenderer={renderHeader}
         rowRenderer={renderRow}
         actionsRenderer={renderActions}

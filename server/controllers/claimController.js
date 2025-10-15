@@ -301,6 +301,14 @@ exports.createClaim = async (req, res, next) => {
       status: newStatus._id,
     });
     const claim = await Claim.create(claimData);
+
+    // Create a notification for the first approver
+    await Notification.create({
+        user: firstApprover.approverId,
+        claim: claim._id,
+        message: `A new claim with ID ${claim.claimId} has been submitted for your approval.`,
+    });
+
     res.status(201).json({ success: true, data: claim });
   } catch (err) {
     console.error(err);
@@ -333,6 +341,12 @@ exports.updateClaim = async (req, res, next) => {
     claim = await Claim.findByIdAndUpdate(req.params.id, updatedData, {
       new: true,
       runValidators: true,
+    });
+
+    await Notification.create({
+      user: req.user.id,
+      claim: claim._id,
+      message: `You have successfully updated claim ${claim.claimId}.`,
     });
 
     res.status(200).json({ success: true, data: claim });
@@ -368,12 +382,14 @@ exports.deleteClaim = async (req, res, next) => {
   }
 };
 
+const sendEmail = require('../utils/email');
+
 // @desc    Approve claim
 // @route   PUT /api/claims/:id/approve
 // @access  Private/Approver
 exports.approveClaim = async (req, res, next) => {
   try {
-    let claim = await Claim.findById(req.params.id).populate('user');
+    let claim = await Claim.findById(req.params.id).populate('user').populate('claimType');
     if (!claim) {
       return res.status(404).json({ success: false });
     }
@@ -433,6 +449,13 @@ exports.approveClaim = async (req, res, next) => {
         approver: nextApprover.approverId,
         status: newStatus._id,
       });
+
+      // Create a notification for the next approver
+      await Notification.create({
+          user: nextApprover.approverId,
+          claim: claim._id,
+          message: `A new claim with ID ${claim.claimId} has been submitted for your approval.`,
+      });
     } else {
       claim.status = approvedStatus._id;
     }
@@ -451,6 +474,37 @@ exports.approveClaim = async (req, res, next) => {
         claim: claim._id,
         message: `You have approved claim ${claim.claimId}.`,
     });
+
+    // Send email to the user who applied for the claim
+    if (finalStatus.statusName === 'Approved') {
+        try {
+            const approver = req.user.name;
+            const claimType = claim.claimType.typeName;
+            const amount = claim.amount;
+            const description = claim.description;
+
+            const emailMessage = `
+                <p>Your claim with ID ${claim.claimId} has been approved.</p>
+                <br>
+                <p><strong>Claim Details:</strong></p>
+                <ul>
+                    <li><strong>Claim Type:</strong> ${claimType}</li>
+                    <li><strong>Amount:</strong> ${amount}</li>
+                    <li><strong>Description:</strong> ${description}</li>
+                    <li><strong>Approved by:</strong> ${approver}</li>
+                </ul>
+            `;
+
+            await sendEmail({
+                email: claim.user.email,
+                subject: `Claim ${claim.claimId} Approved`,
+                message: emailMessage,
+                html: emailMessage,
+            });
+        } catch (err) {
+            console.error('There was an error sending the email. ', err);
+        }
+    }
 
     res.status(200).json({ success: true, data: claim });
   } catch (err) {
@@ -483,6 +537,19 @@ exports.rejectClaim = async (req, res, next) => {
       claim: claim._id,
       message: `Your claim ${claim.claimId} has been Rejected.`,
     });
+
+    // Send email to the user who applied for the claim
+    try {
+        const emailMessage = `Your claim with ID ${claim.claimId} has been rejected. Reason: ${req.body.remarks}`;
+        await sendEmail({
+            email: claim.user.email,
+            subject: `Claim ${claim.claimId} Rejected`,
+            message: emailMessage,
+            html: `<p>Your claim with ID ${claim.claimId} has been rejected.</p><p><strong>Reason:</strong> ${req.body.remarks}</p>`,
+        });
+    } catch (err) {
+        console.error('There was an error sending the email. ', err);
+    }
 
     // Notification for the user who rejected the claim
     await Notification.create({
@@ -521,6 +588,19 @@ exports.returnClaim = async (req, res, next) => {
       claim: claim._id,
       message: `Your claim ${claim.claimId} has been Returned for more information.`,
     });
+
+    // Send email to the user who applied for the claim
+    try {
+        const emailMessage = `Your claim with ID ${claim.claimId} has been returned for more information. Reason: ${req.body.remarks}`;
+        await sendEmail({
+            email: claim.user.email,
+            subject: `Claim ${claim.claimId} Returned`,
+            message: emailMessage,
+            html: `<p>Your claim with ID ${claim.claimId} has been returned for more information.</p><p><strong>Reason:</strong> ${req.body.remarks}</p>`,
+        });
+    } catch (err) {
+        console.error('There was an error sending the email. ', err);
+    }
 
     // Notification for the user who returned the claim
     await Notification.create({

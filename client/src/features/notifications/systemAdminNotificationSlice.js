@@ -23,6 +23,20 @@ export const getSystemAdminNotifications = createAsyncThunk('systemAdminNotifica
   }
 });
 
+// Mark all as read
+export const markAllAsRead = createAsyncThunk('systemAdminNotifications/markAllAsRead', async (_, thunkAPI) => {
+  try {
+    const token = thunkAPI.getState().auth.accessToken;
+    return await systemAdminNotificationService.markAllAsRead(token);
+  } catch (error) {
+    const message =
+      (error.response && error.response.data && error.response.data.message) ||
+      error.message ||
+      error.toString();
+    return thunkAPI.rejectWithValue(message);
+  }
+});
+
 export const systemAdminNotificationSlice = createSlice({
   name: 'systemAdminNotifications',
   initialState,
@@ -40,6 +54,7 @@ export const systemAdminNotificationSlice = createSlice({
         state.isLoading = true;
       })
       .addCase(getSystemAdminNotifications.fulfilled, (state, action) => {
+        console.log('getSystemAdminNotifications fulfilled:', action.payload);
         state.isLoading = false;
         state.isSuccess = true;
         state.notifications = action.payload.data;
@@ -48,9 +63,12 @@ export const systemAdminNotificationSlice = createSlice({
         state.isLoading = false;
         state.isError = true;
         state.message = action.payload;
+      })
+      .addCase(markAllAsRead.fulfilled, (state, action) => {
+        state.notifications.forEach((notification) => (notification.isRead = true));
       });
   },
 });
 
-export const { reset, markAllAsRead } = systemAdminNotificationSlice.actions;
+export const { reset } = systemAdminNotificationSlice.actions;
 export default systemAdminNotificationSlice.reducer;
