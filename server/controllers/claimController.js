@@ -321,7 +321,7 @@ exports.createClaim = async (req, res, next) => {
 // @access  Private
 exports.updateClaim = async (req, res, next) => {
   try {
-    let claim = await Claim.findById(req.params.id);
+    let claim = await Claim.findById(req.params.id).populate('status');
 
     if (!claim) {
       return res.status(404).json({ success: false });
@@ -338,10 +338,50 @@ exports.updateClaim = async (req, res, next) => {
       updatedData.attachments = [req.file.path];
     }
 
-    claim = await Claim.findByIdAndUpdate(req.params.id, updatedData, {
-      new: true,
-      runValidators: true,
-    });
+    if (claim.status.statusName === 'Returned') {
+        const approvalRule = await ApprovalRule.findOne({
+            claimType: claim.claimType,
+            amountMin: { $lte: amount },
+            amountMax: { $gte: amount },
+        });
+
+        if (!approvalRule || approvalRule.approvers.length === 0) {
+            return res.status(400).json({ success: false, message: 'No approval rule found for this claim type and amount.' });
+        }
+
+        const firstApprover = approvalRule.approvers[0];
+        const firstApproverRole = await RoleMaster.findById(firstApprover.approverId);
+        let newStatusName;
+        if (firstApproverRole.roleName === 'Admin/Finance Head') {
+            newStatusName = 'Pending: Finance Head';
+        } else {
+            newStatusName = `Pending: ${firstApproverRole.roleName}`;
+        }
+        const newStatus = await StatusMaster.findOne({ statusName: newStatusName });
+
+        updatedData.status = newStatus._id;
+        updatedData.approvalHistory = [{
+            approver: firstApprover.approverId,
+            status: newStatus._id,
+        }];
+
+        claim = await Claim.findByIdAndUpdate(req.params.id, updatedData, {
+            new: true,
+            runValidators: true,
+        });
+
+        await Notification.create({
+            user: firstApprover.approverId,
+            claim: claim._id,
+            message: `A returned claim with ID ${claim.claimId} has been resubmitted for your approval.`,
+        });
+
+    } else {
+        claim = await Claim.findByIdAndUpdate(req.params.id, updatedData, {
+            new: true,
+            runValidators: true,
+        });
+    }
 
     await Notification.create({
       user: req.user.id,
