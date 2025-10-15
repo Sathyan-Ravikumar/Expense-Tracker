@@ -8,9 +8,7 @@ html, body, #root {
   padding: 0;
 }
 
-body {
-  background: linear-gradient(to bottom right, #3b82f6, #8b5cf6);
-}
+
 
 .loadingSpinnerContainer {
   position: fixed;
@@ -30,7 +28,7 @@ body {
   height: 64px;
   border: 8px solid;
   border-color: #fff transparent #fff transparent;
-  border-radius: 50%;
+  border-radius: 50%;   
   animation: spin 1.2s linear infinite;
 }
 
@@ -42,3 +40,4 @@ body {
     transform: rotate(360deg);
   }
 }
+
