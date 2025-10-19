@@ -8,6 +8,7 @@ function Notifications() {
   const dispatch = useDispatch();
 
   const { notifications } = useSelector((state) => state.notifications);
+  console.log('notifications in Notifications.jsx:', notifications);
   const { user } = useSelector((state) => state.auth);
 
   useEffect(() => {

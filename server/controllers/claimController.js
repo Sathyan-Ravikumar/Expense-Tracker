@@ -19,65 +19,62 @@ exports.getClaims = async (req, res, next) => {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 10;
     const startIndex = (page - 1) * limit;
-    const endIndex = page * limit;
+    const userRole = req.user.role.roleName;
 
-    let baseQuery = {};
-
-    if (req.user.role.roleName === 'Manager') {
+    let scopeQuery = {};
+    if (userRole === 'Manager') {
       const employees = await User.find({ manager: req.user.id });
       const employeeIds = employees.map((employee) => employee._id);
-      const userIds = [req.user.id, ...employeeIds];
-      baseQuery = { user: { $in: userIds } };
-    } else {
+      scopeQuery = { user: { $in: employeeIds } };
+    } else if (userRole === 'Finance Officer' || userRole === 'Admin/Finance Head') {
       const userRoleId = req.user.role._id;
       const relevantRules = await ApprovalRule.find({ 'approvers.approverId': userRoleId });
       const relevantClaimTypeIds = [...new Set(relevantRules.map(rule => rule.claimType.toString()))];
-      baseQuery = { claimType: { $in: relevantClaimTypeIds } };
+      scopeQuery = { claimType: { $in: relevantClaimTypeIds } };
     }
 
-    // Add claimType filter if provided
-    if (req.query.claimType) {
-        baseQuery.claimType = req.query.claimType;
+
+    const mainQuery = { ...scopeQuery };
+    const requestedStatus = req.query.status;
+
+    if (requestedStatus) {
+        const status = await StatusMaster.findOne({ statusName: requestedStatus });
+        if (status) {
+            mainQuery.status = status._id;
+        }
     }
 
-    // Add amount range filter if provided
-    if (req.query.minAmount) {
-        baseQuery.amount = { ...baseQuery.amount, $gte: parseFloat(req.query.minAmount) };
-    }
-    if (req.query.maxAmount) {
-        baseQuery.amount = { ...baseQuery.amount, $lte: parseFloat(req.query.maxAmount) };
-    }
-
-    // Add employee name filter if provided
-    if (req.query.searchTerm) {
-        const users = await User.find({ name: { $regex: req.query.searchTerm, $options: 'i' } });
-        const userIds = users.map(u => u._id);
-        
-        baseQuery.$or = [
-            { user: { $in: userIds } },
-            { claimId: { $regex: req.query.searchTerm, $options: 'i' } }
-        ];
-    }
-
-    // Add date range filter if provided
-    if (req.query.startDate) {
-        baseQuery.date = { ...baseQuery.date, $gte: new Date(req.query.startDate) };
-    }
-    if (req.query.endDate) {
-        const endDate = new Date(req.query.endDate);
-        endDate.setHours(23, 59, 59, 999);
-        baseQuery.date = { ...baseQuery.date, $lte: endDate };
-    }
-
-    const total = await Claim.countDocuments(baseQuery);
-    const claims = await Claim.find(baseQuery).sort({ createdAt: -1 }).skip(startIndex).limit(limit)
+    const total = await Claim.countDocuments(mainQuery);
+    const claims = await Claim.find(mainQuery)
+      .sort({ createdAt: -1 })
+      .skip(startIndex)
+      .limit(limit)
       .populate('user', 'name email')
       .populate('claimType', 'typeName')
       .populate('status', 'statusName')
       .populate({
         path: 'approvalHistory.approver',
-        select: 'name email'
+        model: 'RoleMaster',
+        select: 'roleName'
+      })
+      .populate({
+        path: 'approvalHistory.status',
+        model: 'StatusMaster',
+        select: 'statusName'
       });
+
+    const approvedStatus = await StatusMaster.findOne({ statusName: 'Approved' });
+    const rejectedStatuses = await StatusMaster.find({ statusName: { $in: ['Rejected', 'Returned'] } });
+    const rejectedStatusIds = rejectedStatuses.map(s => s._id);
+
+    const pendingStatusName = `Pending: ${userRole}`;
+    const pendingStatus = await StatusMaster.findOne({ statusName: pendingStatusName });
+
+    const counts = {
+        pending: pendingStatus ? await Claim.countDocuments({ ...scopeQuery, status: pendingStatus._id }) : 0,
+        approved: approvedStatus ? await Claim.countDocuments({ ...scopeQuery, status: approvedStatus._id }) : 0,
+        rejected: rejectedStatusIds.length > 0 ? await Claim.countDocuments({ ...scopeQuery, status: { $in: rejectedStatusIds } }) : 0,
+    };
 
     const totalPages = Math.ceil(total / limit);
     const pagination = {
@@ -85,25 +82,14 @@ exports.getClaims = async (req, res, next) => {
         limit,
         total,
         totalPages,
+        counts,
     };
-    if (endIndex < total) {
-      pagination.next = {
-        page: page + 1,
-        limit,
-      };
-    }
-
-    if (startIndex > 0) {
-      pagination.prev = {
-        page: page - 1,
-        limit,
-      };
-    }
 
     res.status(200).json({ success: true, count: claims.length, pagination, data: claims });
 
   } catch (err) {
-    res.status(400).json({ success: false });
+    console.error(err);
+    res.status(400).json({ success: false, message: err.message });
   }
 };
 
@@ -159,6 +145,7 @@ exports.getMyClaims = async (req, res, next) => {
       .populate('approvalHistory.status', 'statusName')
       .populate({
         path: 'approvalHistory.approver',
+        model: 'User',
         select: 'name email'
       });
 
@@ -272,6 +259,22 @@ exports.createClaim = async (req, res, next) => {
         return res.status(400).json({ success: false, message: 'First approver role not found.' });
     }
 
+    // Find the actual user to notify
+    let approverUser;
+    if (firstApproverRole.roleName === 'Manager') {
+      if (!user.manager) {
+        return res.status(400).json({ success: false, message: `Claim submitter ${user.name} does not have a manager assigned.` });
+      }
+      approverUser = await User.findById(user.manager);
+    } else {
+      // For other roles like 'Finance Officer', find a user with that role.
+      approverUser = await User.findOne({ role: firstApprover.approverId });
+    }
+
+    if (!approverUser) {
+      return res.status(400).json({ success: false, message: `Could not find an active user for the approver role '${firstApproverRole.roleName}'.` });
+    }
+
     let newStatusName;
     if (firstApproverRole.roleName === 'Admin/Finance Head') {
       newStatusName = 'Pending: Finance Head';
@@ -304,7 +307,7 @@ exports.createClaim = async (req, res, next) => {
 
     // Create a notification for the first approver
     await Notification.create({
-        user: firstApprover.approverId,
+        user: approverUser._id, // Correctly assign to the user, not the role
         claim: claim._id,
         message: `A new claim with ID ${claim.claimId} has been submitted for your approval.`,
     });
@@ -484,22 +487,35 @@ exports.approveClaim = async (req, res, next) => {
       if (!newStatus) {
         return res.status(500).json({ success: false, message: `Status '${newStatusName}' not found.` });
       }
+
+      console.log(`[DEBUG] Claim ${claim._id}: Attempting to set status to '${newStatusName}'.`);
+
       claim.status = newStatus._id;
       claim.approvalHistory.push({
         approver: nextApprover.approverId,
         status: newStatus._id,
       });
 
-      // Create a notification for the next approver
-      await Notification.create({
-          user: nextApprover.approverId,
-          claim: claim._id,
-          message: `A new claim with ID ${claim.claimId} has been submitted for your approval.`,
-      });
+      // Find user with the next approver role to create notification
+      const approverUser = await User.findOne({ role: nextApprover.approverId });
+      if (!approverUser) {
+        console.log(`[DEBUG] Claim ${claim._id}: Could not find a user with role '${nextApproverRole.roleName}' to notify.`);
+      } else {
+        await Notification.create({
+            user: approverUser._id, // Correctly use the user's ID
+            claim: claim._id,
+            message: `A new claim with ID ${claim.claimId} has been submitted for your approval.`,
+        });
+        console.log(`[DEBUG] Claim ${claim._id}: Created notification for user ${approverUser._id} with role ${nextApproverRole.roleName}.`);
+      }
     } else {
+      console.log(`[DEBUG] Claim ${claim._id}: No next approver. Setting status to Approved.`);
       claim.status = approvedStatus._id;
     }
-    await claim.save();
+    
+    const savedClaim = await claim.save();
+    await savedClaim.populate('status', 'statusName');
+    console.log(`[DEBUG] Claim ${savedClaim._id}: Successfully saved. New status is '${savedClaim.status.statusName}'.`);
 
     const finalStatus = await StatusMaster.findById(claim.status);
     await Notification.create({

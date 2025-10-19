@@ -65,7 +65,7 @@ export const systemAdminNotificationSlice = createSlice({
         state.message = action.payload;
       })
       .addCase(markAllAsRead.fulfilled, (state, action) => {
-        state.notifications.forEach((notification) => (notification.isRead = true));
+        state.notifications = state.notifications.map(n => ({...n, isRead: true}));
       });
   },
 });

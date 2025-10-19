@@ -106,7 +106,7 @@ export const notificationSlice = createSlice({
       .addCase(markAllAsRead.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.notifications = action.payload;
+        state.notifications = state.notifications.map(n => ({...n, isRead: true}));
       })
       .addCase(markAllAsRead.rejected, (state, action) => {
         state.isLoading = false;

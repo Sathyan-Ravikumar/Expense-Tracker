@@ -13,12 +13,12 @@ const createClaim = async (claimData, token) => {
 };
 
 // Get all claims for reviewer
-const getClaims = async (token, { page = 1, limit = 10, claimType = '', minAmount = '', maxAmount = '', startDate = '', endDate = '', searchTerm = '' }) => {
+const getClaims = async (token, { page = 1, limit = 10, claimType = '', minAmount = '', maxAmount = '', startDate = '', endDate = '', searchTerm = '', status = '' }) => {
   const config = {
     headers: {
       'x-auth-token': token,
     },
-    params: { page, limit, claimType, minAmount, maxAmount, startDate, endDate, searchTerm },
+    params: { page, limit, claimType, minAmount, maxAmount, startDate, endDate, searchTerm, status },
   };
 
   const response = await axios.get('http://localhost:5000/api/claims/', config);

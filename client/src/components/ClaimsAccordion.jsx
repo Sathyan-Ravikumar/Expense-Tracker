@@ -72,7 +72,7 @@ function ClaimsAccordion({ claims, title, headerRenderer, rowRenderer, actionsRe
                         </div>
                       </div>
                       <div className="flex items-center space-x-4">
-                        {actionsRenderer && claim.status.statusName !== 'Rejected' && actionsRenderer(claim)}
+                        {actionsRenderer && claim.status.statusName !== 'Rejected' && (console.log('claim in accordion:', claim), actionsRenderer(claim))}
                       </div>
                     </div>
                   </div>

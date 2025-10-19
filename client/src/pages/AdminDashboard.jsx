@@ -46,13 +46,14 @@ function AdminDashboard() {
     if (!user) {
       navigate('/login');
     } else {
-      dispatch(getClaims({ page: currentPage, limit: 10, claimType, minAmount, maxAmount, startDate, endDate }));
+      const status = activeTab === 'Pending' ? 'Pending: Finance Head' : activeTab;
+      dispatch(getClaims({ page: currentPage, limit: 10, status, claimType, minAmount, maxAmount, startDate, endDate }));
     }
 
     return () => {
       dispatch(reset());
     };
-  }, [user, navigate, dispatch, currentPage, claimType, minAmount, maxAmount, startDate, endDate]);
+  }, [user, navigate, dispatch, currentPage, activeTab, claimType, minAmount, maxAmount, startDate, endDate]);
 
   const handleApproveClick = (claimId) => {
     setClaimIdToApprove(claimId);
@@ -100,7 +101,7 @@ function AdminDashboard() {
     setSelectedClaimId(null);
   };
 
-  const filteredClaims = useMemo(() => claims.filter(claim => {
+  const displayedClaims = useMemo(() => claims.filter(claim => {
     if (searchTerm === '') {
       return claim;
     } else if (
@@ -109,25 +110,8 @@ function AdminDashboard() {
     ) {
       return claim;
     }
+    return false;
   }), [claims, searchTerm]);
-
-  const pendingClaims = useMemo(() => filteredClaims.filter(c => c.status?.statusName?.startsWith('Pending')), [filteredClaims]);
-  const approvedClaims = useMemo(() => filteredClaims.filter(c => c.status?.statusName === 'Approved'), [filteredClaims]);
-  const rejectedClaims = useMemo(() => filteredClaims.filter(c => c.status?.statusName === 'Rejected' || c.status?.statusName === 'Returned'), [filteredClaims]);
-  const pendingClaimsForHead = useMemo(() => pendingClaims.filter(c => c.status?.statusName === 'Pending: Finance Head'), [pendingClaims]);
-
-  const displayedClaims = useMemo(() => {
-    switch (activeTab) {
-      case 'Pending':
-        return pendingClaims;
-      case 'Approved':
-        return approvedClaims;
-      case 'Rejected':
-        return rejectedClaims;
-      default:
-        return [];
-    }
-  }, [activeTab, pendingClaims, approvedClaims, rejectedClaims]);
 
   if (isLoading) {
     return <Spinner />;
@@ -173,11 +157,11 @@ function AdminDashboard() {
     return null;
   };
 
-  const TabButton = ({ tabName, list }) => (
+  const TabButton = ({ tabName, count }) => (
     <button 
         onClick={() => setActiveTab(tabName)}
         className={`py-2 px-4 text-sm font-medium transition-colors duration-200 ${activeTab === tabName ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>
-        {tabName} ({list.length})
+        {tabName} ({count})
     </button>
   );
 
@@ -196,18 +180,18 @@ function AdminDashboard() {
       <ReportModal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} />
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
-        <StatCard icon={<FaFileInvoiceDollar className="text-4xl text-blue-500 mr-4" />} title="Total Claims in System" value={pagination?.total || claims.length} />
-        <StatCard icon={<FaClock className="text-4xl text-yellow-500 mr-4" />} title="Needs Your Action" value={pendingClaimsForHead.length} />
-        <StatCard icon={<FaCheckCircle className="text-4xl text-green-500 mr-4" />} title="Total Approved" value={approvedClaims.length} />
-        <StatCard icon={<FaTimesCircle className="text-4xl text-red-500 mr-4" />} title="Total Rejected" value={rejectedClaims.length} />
+        <StatCard icon={<FaFileInvoiceDollar className="text-4xl text-blue-500 mr-4" />} title="Total Claims in System" value={pagination?.total || 0} />
+        <StatCard icon={<FaClock className="text-4xl text-yellow-500 mr-4" />} title="Needs Your Action" value={pagination?.counts?.pending || 0} />
+        <StatCard icon={<FaCheckCircle className="text-4xl text-green-500 mr-4" />} title="Total Approved" value={pagination?.counts?.approved || 0} />
+        <StatCard icon={<FaTimesCircle className="text-4xl text-red-500 mr-4" />} title="Total Rejected" value={pagination?.counts?.rejected || 0} />
       </div>
       
       <div className="flex justify-between items-center mb-4">
         <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                <TabButton tabName="Pending" list={pendingClaims} />
-                <TabButton tabName="Approved" list={approvedClaims} />
-                <TabButton tabName="Rejected" list={rejectedClaims} />
+                <TabButton tabName="Pending" count={pagination?.counts?.pending || 0} />
+                <TabButton tabName="Approved" count={pagination?.counts?.approved || 0} />
+                <TabButton tabName="Rejected" count={pagination?.counts?.rejected || 0} />
             </nav>
         </div>
         <div className="flex items-center space-x-4">

@@ -15,7 +15,7 @@ import Pagination from '../components/Pagination';
 import FilterPanel from '../components/FilterPanel';
 import ReportModal from '../components/ReportModal';
 
-function FinanceDashboard() {
+function FinanceHeadDashboard() {
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedClaimId, setSelectedClaimId] = useState(null);
@@ -46,7 +46,7 @@ function FinanceDashboard() {
     if (!user) {
       navigate('/login');
     } else {
-      const status = activeTab === 'Pending' ? 'Pending: Finance Officer' : activeTab;
+      const status = activeTab === 'Pending' ? 'Pending: Finance Head' : activeTab;
       dispatch(getClaims({ page: currentPage, limit: 10, status, claimType, minAmount, maxAmount, startDate, endDate }));
     }
 
@@ -144,7 +144,7 @@ function FinanceDashboard() {
   );
 
   const renderActions = (claim) => {
-    const isActionableForApproval = claim.status?.statusName === 'Pending: Finance Officer' && user.role?.roleName === 'Finance Officer';
+    const isActionableForApproval = claim.status?.statusName === 'Pending: Finance Head' && user.role?.roleName === 'Admin/Finance Head';
     if (isActionableForApproval) {
         return (
             <div className="flex items-center space-x-4">
@@ -166,7 +166,7 @@ function FinanceDashboard() {
   );
 
   return (
-    <DashboardLayout pageTitle="Finance Dashboard">
+    <DashboardLayout pageTitle="Finance Head Dashboard">
       {showReturnModal && <ReturnClaimModal claimId={selectedClaimId} closeModal={closeReturnModal} />}
       {showRejectModal && <RejectClaimModal claimId={selectedClaimId} closeModal={closeRejectModal} />}
       <ConfirmationModal 
@@ -222,4 +222,4 @@ function FinanceDashboard() {
   );
 }
 
-export default FinanceDashboard;
+export default FinanceHeadDashboard;

@@ -13,10 +13,6 @@ function NotificationsPage() {
   const { user } = useSelector((state) => state.auth);
   const { notifications, isLoading, isError, message } = useSelector((state) => state.notifications);
   const { notifications: systemAdminNotifications, isLoading: systemAdminIsLoading, isError: systemAdminIsError, message: systemAdminMessage } = useSelector((state) => state.systemAdminNotifications);
-  console.log('notifications:', notifications);
-  console.log('systemAdminNotifications:', systemAdminNotifications);
-  console.log('notifications:', notifications);
-  console.log('systemAdminNotifications:', systemAdminNotifications);
   const [activeTab, setActiveTab] = useState('user');
   const [currentPage, setCurrentPage] = useState(1);
 

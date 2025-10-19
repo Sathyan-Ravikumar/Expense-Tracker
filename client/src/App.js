@@ -16,6 +16,7 @@ import NotificationsPage from './pages/NotificationsPage';
 import UserManagement from './pages/UserManagement';
 import { useSelector } from 'react-redux';
 
+import FinanceHeadDashboard from './pages/FinanceHeadDashboard';
 import AuditLogsPage from './pages/AuditLogsPage';
 
 function App() {
@@ -34,6 +35,7 @@ function App() {
             <Route path="/approval-rules" element={<PrivateRoute roles={['Admin/Finance Head', 'System Admin']}><ApprovalRulesPage /></PrivateRoute>} />
             <Route path="/manager/dashboard" element={<PrivateRoute roles={['Manager']}><ManagerDashboard /></PrivateRoute>} />
             <Route path="/finance/dashboard" element={<PrivateRoute roles={['Finance Officer']}><FinanceDashboard /></PrivateRoute>} />
+            <Route path="/finance-head/dashboard" element={<PrivateRoute roles={['Admin/Finance Head']}><FinanceHeadDashboard /></PrivateRoute>} />
             <Route path="/admin/dashboard" element={<PrivateRoute roles={['Admin/Finance Head']}><AdminDashboard /></PrivateRoute>} />
             <Route path="/system-admin/dashboard" element={<PrivateRoute roles={['System Admin']}><SystemAdminDashboard /></PrivateRoute>} />
             <Route path="/admin/users" element={<PrivateRoute roles={['System Admin']}><UserManagement /></PrivateRoute>} />
